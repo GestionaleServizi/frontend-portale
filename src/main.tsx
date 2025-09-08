@@ -13,7 +13,7 @@ import "./styles.css"; // importa i tuoi stili globali
 import Login from "./pages/Login";
 import Dashboard from "./pages/DashboardAdmin";
 import Clienti from "./pages/ClientiPage";
-import Segnalazione from "./pages/Segnalazione";
+import Segnalazione from "./pages/SegnalazionePage";
 import Welcome from "./pages/Welcome";
 
 // Layout base (wrapper con <Outlet />)
