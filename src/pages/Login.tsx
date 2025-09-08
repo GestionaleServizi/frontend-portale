@@ -1,71 +1,63 @@
-import { useState } from "react";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [err, setErr] = useState<string | null>(null);
-  const API = import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, "") || "";
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
 
-  async function submit(e: React.FormEvent) {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErr(null);
+    setError("");
 
     try {
-      const res = await fetch(`${API}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/auth/login`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("Credenziali non valide");
+      }
 
       const data = await res.json();
 
-      if (!res.ok || !data?.ok || !data?.token) {
-        setErr(data?.error || "Credenziali non valide");
-        return;
-      }
-
-      // salva token e user
+      // Salva il token in localStorage
       localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user || {}));
 
-      // vai alla dashboard
-      window.location.href = "/dashboard";
-    } catch (e) {
-      setErr("Errore di rete");
+      // Reindirizza alla dashboard
+      navigate("/dashboard");
+    } catch (err: any) {
+      setError(err.message || "Errore di connessione");
     }
-  }
+  };
 
   return (
-    <div className="login-page">
-      <div className="login-card">
-        <h2>Accedi</h2>
-
-        <form onSubmit={submit} className="login-form">
-          <input
-            type="email"
-            placeholder="es. admin@tuazienda.it"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="username"
-            required
-          />
-          <div className="password-row">
-            <input
-              type="password"
-              placeholder="La tua password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              required
-            />
-          </div>
-
-          {err && <div className="login-error">{err}</div>}
-
-          <button type="submit" className="login-btn">Entra</button>
-        </form>
-      </div>
+    <div className="login-container">
+      <form onSubmit={submit} className="login-box">
+        <h2>Login</h2>
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+        <button type="submit">Accedi</button>
+        {error && <p className="error">{error}</p>}
+      </form>
     </div>
   );
 }
-
