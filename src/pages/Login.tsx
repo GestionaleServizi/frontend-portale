@@ -1,68 +1,150 @@
 import { useState } from "react";
-import { api } from "../lib/api"; // usa l'istanza Axios con baseURL e Authorization
+import { useNavigate } from "react-router-dom";
+import { apiFetch } from "../api";
 
-export default function Login() {
+type LoginResponse =
+  | { ok: true; token?: string; user?: any }  // compat con backend “ok:true”
+  | { token: string; user?: any }             // compat con backend “token”
+  | any;
+
+export default function LoginPage() {
+  const nav = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPwd, setShowPwd] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  async function submit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
-
+    setLoading(true);
     try {
-      // chiamata corretta: /api/auth/login
-      const res = await api.post("/auth/login", { email, password });
+      const res = await apiFetch<LoginResponse>("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      });
 
-      // ci aspettiamo: { token, user: {...} }
-      const { token } = res.data || {};
-      if (!token) {
-        setErr("Risposta non valida dal server.");
+      // Normalizziamo la risposta
+      const token =
+        (res && (res.token as string)) ||
+        (res && res.ok && res.token) ||
+        null;
+
+      if (token) {
+        localStorage.setItem("token", token);
+      }
+
+      // se il backend non restituisce token ma solo ok:true, andiamo avanti lo stesso
+      if (token || (res && res.ok === true)) {
+        // Navigazione post-login (adatta alla tua app)
+        nav("/", { replace: true });
         return;
       }
 
-      localStorage.setItem("token", token);
-      // opzionale: salva info utente se il backend le invia
-      // localStorage.setItem("user", JSON.stringify(res.data.user));
-
-      // redirect semplice dopo il login
-      window.location.href = "/dashboard";
+      throw new Error("Credenziali non valide.");
     } catch (e: any) {
-      const status = e?.response?.status;
-      const msg =
-        e?.response?.data?.message ||
-        e?.message ||
-        "Errore sconosciuto";
-
-      if (status) setErr(`HTTP ${status}: ${msg}`);
-      else setErr(`Network error: ${msg}`);
+      setErr(e?.message ?? "Errore di login");
+    } finally {
+      setLoading(false);
     }
   }
 
   return (
-    <div className="grid" style={{ placeItems: "center", minHeight: "60vh" }}>
-      <div className="card" style={{ maxWidth: 420, width: "100%" }}>
-        <h2>Login</h2>
-        <form onSubmit={submit} className="grid" style={{ gap: 12 }}>
+    <div style={{
+      minHeight: "100vh",
+      display: "grid",
+      placeItems: "center",
+      padding: "1rem"
+    }}>
+      <form
+        onSubmit={onSubmit}
+        style={{
+          width: "100%",
+          maxWidth: 420,
+          display: "grid",
+          gap: "12px",
+          padding: "24px",
+          borderRadius: "12px",
+          boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+          background: "white"
+        }}
+      >
+        <h1 style={{ margin: 0, textAlign: "center" }}>Accedi</h1>
+
+        <label style={{ display: "grid", gap: 6 }}>
+          <span>Email</span>
           <input
-            placeholder="Email"
+            type="email"
+            required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            placeholder="es. admin@tuazienda.it"
+            style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #ddd" }}
           />
-          <input
-            placeholder="Password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          {err && (
-            <div style={{ color: "red", fontWeight: 600 }}>
-              {err}
-            </div>
-          )}
-          <button type="submit">Accedi</button>
-        </form>
-      </div>
+        </label>
+
+        <label style={{ display: "grid", gap: 6 }}>
+          <span>Password</span>
+          <div style={{ position: "relative" }}>
+            <input
+              type={showPwd ? "text" : "password"}
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="La tua password"
+              style={{
+                padding: "10px 40px 10px 12px",
+                borderRadius: 8,
+                border: "1px solid #ddd",
+                width: "100%"
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPwd((s) => !s)}
+              style={{
+                position: "absolute",
+                right: 6, top: 6,
+                padding: "6px 10px",
+                border: "1px solid #eee",
+                background: "#fafafa",
+                borderRadius: 6,
+                cursor: "pointer"
+              }}
+            >
+              {showPwd ? "Hide" : "Show"}
+            </button>
+          </div>
+        </label>
+
+        <button
+          type="submit"
+          disabled={loading}
+          style={{
+            marginTop: 6,
+            padding: "10px 12px",
+            borderRadius: 8,
+            border: "none",
+            background: "#111827",
+            color: "white",
+            cursor: "pointer",
+            fontWeight: 600
+          }}
+        >
+          {loading ? "Accesso..." : "Entra"}
+        </button>
+
+        {err && (
+          <div style={{ color: "#b91c1c", fontSize: 14, textAlign: "center" }}>
+            {err}
+          </div>
+        )}
+
+        <div style={{ fontSize: 12, color: "#6b7280", textAlign: "center" }}>
+          API: {import.meta.env.VITE_API_BASE_URL || "NON CONFIGURATA"}
+        </div>
+      </form>
     </div>
   );
 }
