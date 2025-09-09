@@ -1,55 +1,36 @@
+// src/main.tsx
 import React from "react";
 import ReactDOM from "react-dom/client";
-import {
-  createBrowserRouter,
-  RouterProvider,
-  Outlet,
-  Navigate,
-} from "react-router-dom";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
 
-import "./styles.css"; // importa i tuoi stili globali
+import Login from "./pages/Login.tsx";
+import Segnalazione from "./pages/Segnalazione.tsx"; // la tua pagina form
+import DashboardAdmin from "./pages/DashboardAdmin.tsx";
 
-// Pagine
-import Login from "./pages/Login";
-import Dashboard from "./pages/DashboardAdmin";
-import Clienti from "./pages/ClientiPage";
-import Segnalazione from "./pages/Segnalazione";
-import Welcome from "./pages/Welcome";
+import ProtectedRoute from "./components/ProtectedRoute.tsx";
+import AdminRoute from "./components/AdminRoute.tsx";
 
-// Layout base (wrapper con <Outlet />)
-function AppLayout() {
-  return (
-    <div className="app">
-      <Outlet />
-    </div>
-  );
-}
-
-// Protezione delle route (controlla token utente)
-function Protected() {
-  const token = localStorage.getItem("token");
-  if (!token) {
-    return <Navigate to="/login" replace />;
-  }
-  return <Outlet />;
-}
+import "./index.css";
 
 const router = createBrowserRouter([
+  { path: "/login", element: <Login /> },
   {
-    element: <AppLayout />,
-    children: [
-      { path: "/login", element: <Login /> },
-      {
-        element: <Protected />,
-        children: [
-          { path: "/", element: <Welcome /> },
-          { path: "/dashboard", element: <Dashboard /> },
-          { path: "/clienti", element: <Clienti /> },
-          { path: "/segnalazione", element: <Segnalazione /> },
-        ],
-      },
-    ],
+    path: "/segnalazione",
+    element: (
+      <ProtectedRoute>
+        <Segnalazione />
+      </ProtectedRoute>
+    ),
   },
+  {
+    path: "/admin",
+    element: (
+      <AdminRoute>
+        <DashboardAdmin />
+      </AdminRoute>
+    ),
+  },
+  { path: "*", element: <Login /> },
 ]);
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
