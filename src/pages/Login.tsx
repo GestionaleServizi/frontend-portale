@@ -1,63 +1,81 @@
 // src/pages/Login.tsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { login } from "../api";
+import { api } from "../api";
 
 export default function Login() {
+  const nav = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const nav = useNavigate();
+  const [err, setErr] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
+    setErr(null);
+    setLoading(true);
 
     try {
-      const res = await login(email, password);
-
-      if (res.ok && res.user) {
-        // Salva i dati in localStorage
-        localStorage.setItem("token", res.token || ""); // se non c'è token, stringa vuota
-        localStorage.setItem("email", res.user.email);
-        localStorage.setItem("role", res.user.ruolo);
-
-        // Redirect in base al ruolo
-        if (res.user.ruolo === "admin") {
-          nav("/dashboard");
-        } else {
-          nav("/segnalazione");
-        }
-      } else {
-        setError(res.error || "Credenziali non valide");
+      const res = await api.login(email.trim(), password);
+      // sicurezza di base: controlla che ci sia il token
+      if (!res?.token) {
+        throw new Error("invalid token");
       }
-    } catch (err) {
-      console.error("Login error:", err);
-      setError("Errore durante il login");
+
+      // salva dati sessione
+      localStorage.setItem("token", res.token);
+      localStorage.setItem("email", res.email || email.trim());
+      localStorage.setItem("role", res.role || "");
+
+      // routing per ruolo
+      if ((res.role || "").toLowerCase() === "admin") {
+        nav("/dashboard", { replace: true });
+      } else {
+        nav("/segnalazione", { replace: true });
+      }
+    } catch (e: any) {
+      // pulizia token in caso di errore
+      localStorage.removeItem("token");
+      localStorage.removeItem("role");
+      localStorage.removeItem("email");
+      setErr(e?.message || "Login fallito");
+    } finally {
+      setLoading(false);
     }
   }
 
   return (
-    <div className="login-container">
+    <div>
+      {/* TITOLO/HEADER: lascia il tuo markup/stili qui se li avevi */}
       <h2>Login</h2>
-      <form onSubmit={handleSubmit}>
+
+      {/* FORM: mantieni pure le tue classi/stili esistenti */}
+      <form onSubmit={onSubmit}>
         <input
           type="email"
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          autoComplete="email"
           required
         />
+
         <input
           type="password"
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          autoComplete="current-password"
           required
         />
-        <button type="submit">Accedi</button>
+
+        <button type="submit" disabled={loading}>
+          {loading ? "Accesso..." : "Accedi"}
+        </button>
+
+        {/* messaggio di errore minimale (puoi stilizzarlo con le tue classi) */}
+        {err && <div style={{ color: "red", marginTop: 8 }}>{err}</div>}
       </form>
-      {error && <p style={{ color: "red" }}>{error}</p>}
     </div>
   );
 }
