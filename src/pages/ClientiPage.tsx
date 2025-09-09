@@ -1,43 +1,61 @@
 import React, { useEffect, useState } from "react";
-import { api } from "../api";
+import { getClienti, createCliente } from "../api";
+
+type Cliente = {
+  id: number;
+  nome_sala: string;
+  codice_sala: string;
+  email?: string;
+  referente?: string;
+  telefono?: string;
+};
 
 export default function ClientiPage() {
-  const [rows, setRows] = useState<any[]>([]);
-  const [form, setForm] = useState<any>({ nome_sala:"", codice_sala:"", email:"" });
+  const [rows, setRows] = useState<Cliente[]>([]);
+  const [msg, setMsg] = useState<string | null>(null);
 
   async function load() {
-    setRows(await api.listClienti());
+    try {
+      const data = await getClienti();
+      setRows(data);
+    } catch {
+      setMsg("Errore nel caricamento clienti");
+    }
   }
-  useEffect(() => { load(); }, []);
 
-  async function save(e: React.FormEvent) {
-    e.preventDefault();
-    await api.upsertCliente(form);
-    setForm({ nome_sala:"", codice_sala:"", email:"" });
-    await load();
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function handleAdd() {
+    try {
+      await createCliente({
+        nome_sala: "Nuova Sala",
+        codice_sala: `SALA-${Date.now()}`,
+      });
+      load();
+    } catch {
+      setMsg("Errore nella creazione cliente");
+    }
   }
 
   return (
-    <div className="page">
-      <h2>Clienti</h2>
-
-      <form className="grid" onSubmit={save}>
-        <input placeholder="Nome sala" value={form.nome_sala} onChange={e=>setForm({...form, nome_sala:e.target.value})}/>
-        <input placeholder="Codice sala" value={form.codice_sala} onChange={e=>setForm({...form, codice_sala:e.target.value})}/>
-        <input placeholder="Email" value={form.email} onChange={e=>setForm({...form, email:e.target.value})}/>
-        <button type="submit">Salva</button>
-      </form>
-
-      <table className="table">
-        <thead><tr><th>Id</th><th>Nome</th><th>Codice</th><th>Email</th></tr></thead>
-        <tbody>
-          {rows.map(r=>(
-            <tr key={r.id}>
-              <td>{r.id}</td><td>{r.nome_sala}</td><td>{r.codice_sala}</td><td>{r.email}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="p-6">
+      <h1 className="text-xl font-bold mb-4">Clienti</h1>
+      {msg && <p>{msg}</p>}
+      <button
+        onClick={handleAdd}
+        className="mb-4 px-4 py-2 bg-blue-600 text-white rounded"
+      >
+        Aggiungi Cliente
+      </button>
+      <ul>
+        {rows.map((c) => (
+          <li key={c.id}>
+            {c.nome_sala} ({c.codice_sala})
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
