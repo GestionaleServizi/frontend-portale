@@ -1,124 +1,86 @@
 // src/api.ts
-// Helper API centralizzato: evita doppio /api, aggiunge Authorization se presente
 
-type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
-type JsonRecord = Record<string, any>;
+const BASE = import.meta.env.VITE_API_BASE_URL;
 
-const RAW_BASE = import.meta.env.VITE_API_BASE_URL ?? ""; 
-// Esempio consigliato: https://segnalazioni-backend-production.up.railway.app/api
-// Va bene anche senza /api, l'unione sotto è "safe".
-
-function joinUrl(base: string, path: string) {
-  const b = base.replace(/\/+$/, "");      // rimuove / finali
-  const p = path.replace(/^\/+/, "");      // rimuove / iniziali
-  return `${b}/${p}`;
-}
-
+// Helper per ottenere il token salvato in localStorage
 export function getToken(): string | null {
   return localStorage.getItem("token");
 }
-export function getRole(): string | null {
-  return localStorage.getItem("role");
-}
-export function getEmail(): string | null {
-  return localStorage.getItem("email");
-}
 
-async function request<T = any>(path: string, options: RequestInit = {}): Promise<T> {
-  const url = joinUrl(RAW_BASE, path);
+// Funzione generica per fare richieste al backend
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = getToken();
 
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    ...(options.headers || {}),
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-
-  const res = await fetch(url, { ...options, headers });
-
-  // 401/403: forza logout chiaro lato chiamante
-  if (res.status === 401 || res.status === 403) {
-    const msg = await res.text().catch(() => "");
-    throw new Error(msg || "unauthorized");
-  }
+  const res = await fetch(`${BASE}/api${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...init.headers,
+    },
+  });
 
   if (!res.ok) {
     const msg = await res.text().catch(() => "");
     throw new Error(msg || `HTTP ${res.status}`);
   }
 
-  // alcune route possono rispondere 204
-  if (res.status === 204) return undefined as unknown as T;
-
-  return (await res.json()) as T;
+  return res.json() as Promise<T>;
 }
 
-/* ===================== AUTH ===================== */
+// ----------------- API ENDPOINTS -----------------
 
-type LoginResp =
-  | { ok: true; token?: string; user: { id: number; email: string; ruolo: string; clienteId?: number | null } }
-  | { error: string };
+// LOGIN
+export const api = {
+  async login(email: string, password: string) {
+    return request<{ token: string; role: string; email: string }>(
+      "/auth/login",
+      {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      }
+    );
+  },
 
-export async function login(email: string, password: string): Promise<void> {
-  const data = await request<LoginResp>("/auth/login", {
-    method: "POST",
-    body: JSON.stringify({ email, password }),
-  });
+  // CATEGORIE
+  listCategorie() {
+    return request<Array<{ id: number; nome_categoria: string }>>(
+      "/categorie"
+    );
+  },
 
-  if ("error" in data) throw new Error(data.error || "invalid credentials");
+  createCategoria(nome_categoria: string) {
+    return request("/categorie", {
+      method: "POST",
+      body: JSON.stringify({ nome_categoria }),
+    });
+  },
 
-  // salva dati base
-  localStorage.setItem("email", data.user.email);
-  localStorage.setItem("role", data.user.ruolo);
+  deleteCategoria(id: number) {
+    return request(`/categorie/${id}`, { method: "DELETE" });
+  },
 
-  // token potrebbe non esserci (modalità “test in chiaro”). In quel caso azzeriamo comunque.
-  if (data.token) {
-    localStorage.setItem("token", data.token);
-  } else {
-    localStorage.removeItem("token");
-  }
-}
+  // CLIENTI
+  listClienti() {
+    return request<Array<any>>("/clienti");
+  },
 
-export function logout() {
-  localStorage.removeItem("token");
-  localStorage.removeItem("role");
-  localStorage.removeItem("email");
-}
+  createCliente(payload: any) {
+    return request("/clienti", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
 
-/* ===================== CATEGORIE ===================== */
+  // SEGNALAZIONI
+  listSegnalazioni() {
+    return request<Array<any>>("/segnalazioni");
+  },
 
-export type Categoria = { id: number; nome_categoria: string };
-
-export async function getCategorie(): Promise<Categoria[]> {
-  const raw = await request<any>("/categorie");
-  // backend può restituire direttamente un array oppure { rows: [...] }
-  if (Array.isArray(raw)) return raw as Categoria[];
-  if (raw && Array.isArray(raw.rows)) return raw.rows as Categoria[];
-  return [];
-}
-
-/* ===================== SEGNALAZIONI ===================== */
-
-export type CreateSegnalazionePayload = {
-  data: string;      // YYYY-MM-DD
-  ora: string;       // HH:mm
-  categoria_id: number;
-  descrizione: string;
-};
-
-export async function createSegnalazione(payload: CreateSegnalazionePayload): Promise<{ ok: true }> {
-  return await request<{ ok: true }>("/segnalazioni", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-}
-
-export default {
-  login,
-  logout,
-  getToken,
-  getRole,
-  getEmail,
-  getCategorie,
-  createSegnalazione,
+  createSegnalazione(payload: any) {
+    return request("/segnalazioni", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
 };
