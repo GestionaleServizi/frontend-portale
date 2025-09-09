@@ -1,90 +1,76 @@
 // src/api.ts
-// Wrapper minimale per chiamate al backend + funzioni di dominio.
+const BASE = import.meta.env.VITE_API_BASE_URL; // es: https://segnalazioni-backend-.../api
 
-const BASE = import.meta.env.VITE_API_BASE_URL; // es. https://segnalazioni-backend-production.up.railway.app/api
-
-if (!BASE) {
-  // Aiuta a debug se dimentichiamo la variabile in Railway
-  // (non rompere il build: solo console.error)
-  // eslint-disable-next-line no-console
-  console.error("VITE_API_BASE_URL mancante!");
+function getToken(): string | null {
+  try {
+    return localStorage.getItem("token");
+  } catch {
+    return null;
+  }
 }
 
-// --- Token helpers ---
-export function getToken(): string | null {
-  return localStorage.getItem("token");
-}
-
-export function setAuth(token: string, role: string, email: string) {
-  localStorage.setItem("token", token);
-  localStorage.setItem("role", role);
-  localStorage.setItem("email", email);
-}
-
-export function clearAuth() {
-  localStorage.removeItem("token");
-  localStorage.removeItem("role");
-  localStorage.removeItem("email");
-}
-
-// --- HTTP helper ---
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = getToken();
 
-  const res = await fetch(`${BASE}${path}`, {
-    method: init.method ?? "GET",
-    headers: {
-      "Content-Type": "application/json",
-      ...(init.headers || {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: init.body,
-    credentials: "omit",
-  });
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    ...(init.headers || {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
 
-  // Se la risposta non è JSON (es. 404 HTML), proviamo a leggere testo per messaggio
-  const isJson =
-    res.headers.get("content-type")?.toLowerCase().includes("application/json") ?? false;
+  const res = await fetch(`${BASE}${path}`, { ...init, headers });
 
+  // 204 No Content
+  if (res.status === 204) return undefined as T;
+
+  // prova a leggere testo per dare messaggi utili
+  const text = await res.text().catch(() => "");
   if (!res.ok) {
-    const msg = isJson ? (await res.json())?.error ?? res.statusText : await res.text();
-    throw new Error(msg || `HTTP ${res.status}`);
+    let msg = text || `HTTP ${res.status}`;
+    try {
+      const j = JSON.parse(text);
+      msg = j.error || j.message || msg;
+    } catch {}
+    throw new Error(msg);
   }
 
-  return (isJson ? await res.json() : ({} as T)) as T;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    // se non è json, prova a castare (utile in dev)
+    return text as unknown as T;
+  }
 }
 
-// --- API specifiche ---
-
-// Login: POST /auth/login  -> { token, user: { ruolo, email, ... } }
-export async function loginApi(email: string, password: string): Promise<{
+export type LoginResponse = {
   token: string;
-  user: { ruolo: string; email: string };
-}> {
-  const data = await request<{ token: string; user: { ruolo: string; email: string } }>(
-    "/auth/login",
-    {
+  user: { email: string; ruolo: "admin" | "operatore" };
+};
+
+export const api = {
+  // AUTH
+  async login(email: string, password: string) {
+    return request<LoginResponse>("/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
-    }
-  );
-  return data;
-}
+    });
+  },
 
-// GET /categorie -> Array<{ id: number; nome_categoria: string }>
-export async function getCategorie(): Promise<Array<{ id: number; nome_categoria: string }>> {
-  return request("/categorie");
-}
+  // CATEGORIE
+  listCategorie() {
+    return request<Array<{ id: number; nome_categoria: string }>>("/categorie");
+  },
 
-// POST /segnalazioni
-export async function createSegnalazione(payload: {
-  data: string; // ISO yyyy-mm-dd
-  ora: string;  // HH:mm
-  categoria_id: number;
-  descrizione: string;
-}): Promise<{ id: number }> {
-  return request("/segnalazioni", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-}
+  // SEGNALAZIONI
+  createSegnalazione(payload: {
+    data: string; // YYYY-MM-DD
+    ora: string;  // HH:mm
+    categoria_id: number;
+    descrizione?: string;
+  }) {
+    return request<{ id: number }>("/segnalazioni", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+};
