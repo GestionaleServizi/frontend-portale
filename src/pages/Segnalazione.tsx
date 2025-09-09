@@ -1,123 +1,176 @@
-// src/pages/Segnalazione.tsx
 import React, { useEffect, useMemo, useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
-import { api, getToken } from "../api";
+import { useNavigate } from "react-router-dom";
+
+// Helpers
+function getToken() {
+  return localStorage.getItem("token");
+}
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL; // deve finire con /api
+
+async function apiFetch(path: string, init?: RequestInit) {
+  const token = getToken();
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 15000); // 15s
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers || {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    signal: ctrl.signal,
+  }).catch((e) => {
+    throw new Error(e?.name === "AbortError" ? "Timeout" : (e?.message || "Network error"));
+  });
+  clearTimeout(timer);
+
+  if (res.status === 401) {
+    const msg = (await res.text().catch(() => "")) || "Unauthorized";
+    const err = new Error(msg);
+    // @ts-expect-error custom flag
+    err.code = 401;
+    throw err;
+  }
+  if (!res.ok) {
+    const msg = (await res.text().catch(() => "")) || `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+  return res.json();
+}
 
 type Categoria = { id: number; nome_categoria: string };
 
 export default function Segnalazione() {
-  // GUARDIA IMMEDIATA: se non c’è token, non renderizzare nulla di questa pagina
-  const token = getToken();
-  if (!token) return <Navigate to="/login" replace />;
+  const navigate = useNavigate();
 
-  const nav = useNavigate();
-  const [categorie, setCategorie] = useState<Categoria[]>([]);
+  const today = useMemo(() => {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  }, []);
+
+  const now = useMemo(() => {
+    const d = new Date();
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mi = String(d.getMinutes()).padStart(2, "0");
+    return `${hh}:${mi}`;
+  }, []);
+
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
-
-  const now = useMemo(() => new Date(), []);
-  const [data, setData] = useState(() => now.toISOString().slice(0, 10));
-  const [ora, setOra] = useState(() => {
-    const hh = String(now.getHours()).padStart(2, "0");
-    const mm = String(now.getMinutes()).padStart(2, "0");
-    return `${hh}:${mm}`;
-  });
+  const [categorie, setCategorie] = useState<Categoria[]>([]);
+  const [data, setData] = useState(today);
+  const [ora, setOra] = useState(now);
   const [categoriaId, setCategoriaId] = useState<number | "">("");
   const [descrizione, setDescrizione] = useState("");
 
   useEffect(() => {
+    let alive = true;
     (async () => {
+      setLoading(true);
+      setErr(null);
       try {
-        setLoading(true);
-        const cats = await api.listCategorie();
+        const token = getToken();
+        if (!token) {
+          navigate("/login", { replace: true });
+          return;
+        }
+        const cats = (await apiFetch("/categorie")) as Categoria[];
+        if (!alive) return;
         setCategorie(cats);
       } catch (e: any) {
-        // Se il wrapper ha lanciato "UNAUTHORIZED", lascia che ProtectedRoute gestisca al prossimo render
-        if (e?.message !== "UNAUTHORIZED") {
-          setErr(e?.message || "Errore nel caricamento categorie");
+        if (e?.code === 401) {
+          // token scaduto o assente → login
+          navigate("/login", { replace: true });
+          return;
         }
+        setErr(e?.message || "Errore nel caricamento categorie");
       } finally {
-        setLoading(false);
+        if (alive) setLoading(false);
       }
     })();
-  }, []);
+    return () => {
+      alive = false;
+    };
+  }, [navigate]);
 
-  async function onSubmit(e: React.FormEvent) {
+  async function salva(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
-    if (!categoriaId) {
-      setErr("Seleziona una categoria");
-      return;
-    }
     try {
-      await api.creaSegnalazione({
-        data,
-        ora,
-        categoria_id: Number(categoriaId),
-        descrizione: descrizione?.trim() || "",
+      if (!categoriaId) throw new Error("Seleziona una categoria");
+      await apiFetch("/segnalazioni", {
+        method: "POST",
+        body: JSON.stringify({
+          data,
+          ora,
+          categoria_id: categoriaId,
+          descrizione,
+        }),
       });
+      // dopo salvataggio: vai dashboard o resetta form
       setDescrizione("");
       setCategoriaId("");
-      alert("Segnalazione inserita!");
-      nav("/dashboard"); // o dove preferisci
+      alert("Segnalazione salvata");
     } catch (e: any) {
-      if (e?.message !== "UNAUTHORIZED") {
-        setErr(e?.message || "Errore nel salvataggio");
+      if (e?.code === 401) {
+        navigate("/login", { replace: true });
+        return;
       }
+      setErr(e?.message || "Errore nel salvataggio");
     }
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-sm text-gray-500">
-        Caricamento…
+      <div className="min-h-screen bg-[#0b0b0e] text-white p-6">
+        <div className="max-w-3xl mx-auto">Caricamento…</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0b0b0e] text-white p-4">
-      <div className="max-w-xl mx-auto bg-[#15151b] rounded-2xl p-6 shadow-lg border border-[#23232b]">
-        <h1 className="text-xl font-semibold mb-4">Nuova Segnalazione</h1>
+    <div className="min-h-screen bg-[#0b0b0e] text-white p-6">
+      <div className="max-w-3xl mx-auto">
+        <h1 className="text-2xl font-semibold mb-4">Nuova Segnalazione</h1>
 
-        {err && (
-          <div className="mb-4 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm">
-            {err}
-          </div>
-        )}
+        {err && <div className="mb-4 text-red-400 text-sm">{err}</div>}
 
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm mb-1">Data</label>
+        <form onSubmit={salva} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label className="block">
+              <span className="text-sm text-gray-300">Data</span>
               <input
                 type="date"
                 value={data}
                 onChange={(e) => setData(e.currentTarget.value)}
-                className="w-full rounded-md bg-[#0f0f14] border border-[#2a2a34] px-3 py-2 outline-none focus:border-[#6c5ce7]"
+                className="mt-1 w-full rounded-md bg-[#0f0f14] border border-[#2a2a34] px-3 py-2 outline-none focus:border-[#6c5ce7]"
                 required
               />
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Ora</label>
+            </label>
+
+            <label className="block">
+              <span className="text-sm text-gray-300">Ora</span>
               <input
                 type="time"
                 value={ora}
                 onChange={(e) => setOra(e.currentTarget.value)}
-                className="w-full rounded-md bg-[#0f0f14] border border-[#2a2a34] px-3 py-2 outline-none focus:border-[#6c5ce7]"
+                className="mt-1 w-full rounded-md bg-[#0f0f14] border border-[#2a2a34] px-3 py-2 outline-none focus:border-[#6c5ce7]"
                 required
               />
-            </div>
+            </label>
           </div>
 
-          <div>
-            <label className="block text-sm mb-1">Categoria</label>
+          <label className="block">
+            <span className="text-sm text-gray-300">Categoria</span>
             <select
               value={categoriaId}
-              onChange={(e) =>
-                setCategoriaId(e.currentTarget.value ? Number(e.currentTarget.value) : "")
-              }
-              className="w-full rounded-md bg-[#0f0f14] border border-[#2a2a34] px-3 py-2 outline-none focus:border-[#6c5ce7]"
+              onChange={(e) => setCategoriaId(e.currentTarget.value ? Number(e.currentTarget.value) : "")}
+              className="mt-1 w-full rounded-md bg-[#0f0f14] border border-[#2a2a34] px-3 py-2 outline-none focus:border-[#6c5ce7]"
               required
             >
               <option value="">— Seleziona —</option>
@@ -127,24 +180,25 @@ export default function Segnalazione() {
                 </option>
               ))}
             </select>
-          </div>
+          </label>
 
-          <div>
-            <label className="block text-sm mb-1">Descrizione</label>
+          <label className="block">
+            <span className="text-sm text-gray-300">Descrizione</span>
             <textarea
               value={descrizione}
               onChange={(e) => setDescrizione(e.currentTarget.value)}
-              rows={5}
-              className="w-full rounded-md bg-[#0f0f14] border border-[#2a2a34] px-3 py-2 outline-none focus:border-[#6c5ce7]"
-              placeholder="Dettagli della segnalazione…"
+              rows={4}
+              className="mt-1 w-full rounded-md bg-[#0f0f14] border border-[#2a2a34] px-3 py-2 outline-none focus:border-[#6c5ce7]"
+              placeholder="Descrivi la segnalazione…"
+              required
             />
-          </div>
+          </label>
 
-          <div className="flex items-center gap-3">
+          <div className="flex gap-3">
             <button
               type="button"
-              onClick={() => nav(-1)}
-              className="rounded-md border border-[#2a2a34] px-3 py-2"
+              onClick={() => navigate("/")}
+              className="rounded-md bg-[#23232b] hover:bg-[#2b2b35] transition-colors px-4 py-2"
             >
               Annulla
             </button>
