@@ -1,59 +1,51 @@
+// src/pages/Login.tsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from "../api";
+import { login } from "../api";
 
 export default function Login() {
-  const nav = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [err, setErr] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const nav = useNavigate();
 
-  async function onSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setErr(null);
-    setLoading(true);
-    try {
-      const res = await api.login(email.trim(), password);
-      // >>> SALVATAGGIO COERENTE <<<
-      localStorage.setItem("token", res.token);
-      localStorage.setItem("email", res.user.email);
-      localStorage.setItem("role", res.user.ruolo);
+    setError(null);
 
-      // redirect in base al ruolo
-      if (res.user.ruolo === "admin") {
-        nav("/dashboard");
+    try {
+      const res = await login(email, password);
+
+      if (res.ok && res.user) {
+        // Salva i dati in localStorage
+        localStorage.setItem("token", res.token || ""); // se non c'è token, stringa vuota
+        localStorage.setItem("email", res.user.email);
+        localStorage.setItem("role", res.user.ruolo);
+
+        // Redirect in base al ruolo
+        if (res.user.ruolo === "admin") {
+          nav("/dashboard");
+        } else {
+          nav("/segnalazione");
+        }
       } else {
-        nav("/segnalazione");
+        setError(res.error || "Credenziali non valide");
       }
-    } catch (e: any) {
-      setErr(e?.message || "Login fallito");
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      console.error("Login error:", err);
+      setError("Errore durante il login");
     }
   }
 
   return (
-    <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
-      <form
-        onSubmit={onSubmit}
-        style={{
-          width: 360,
-          padding: 24,
-          borderRadius: 12,
-          border: "1px solid #2b2f36",
-          background: "#0f172a",
-          color: "#e2e8f0",
-        }}
-      >
-        <h1 style={{ margin: "0 0 16px 0", fontSize: 22 }}>Login</h1>
-
+    <div className="login-container">
+      <h2>Login</h2>
+      <form onSubmit={handleSubmit}>
         <input
           type="email"
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          style={{ width: "100%", padding: 10, marginBottom: 10 }}
           required
         />
         <input
@@ -61,31 +53,11 @@ export default function Login() {
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          style={{ width: "100%", padding: 10, marginBottom: 16 }}
           required
         />
-
-        {err && (
-          <div style={{ color: "#f87171", marginBottom: 12 }}>{err}</div>
-        )}
-
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            width: "100%",
-            padding: 10,
-            background: "#2563eb",
-            border: "none",
-            color: "white",
-            borderRadius: 8,
-            cursor: "pointer",
-            opacity: loading ? 0.7 : 1,
-          }}
-        >
-          {loading ? "Accesso..." : "Accedi"}
-        </button>
+        <button type="submit">Accedi</button>
       </form>
+      {error && <p style={{ color: "red" }}>{error}</p>}
     </div>
   );
 }
