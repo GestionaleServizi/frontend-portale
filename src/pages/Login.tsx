@@ -1,7 +1,6 @@
-// src/pages/Login.tsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { loginApi, setAuth, clearAuth } from "../api";
+import { api } from "../api";
 
 export default function Login() {
   const nav = useNavigate();
@@ -15,50 +14,75 @@ export default function Login() {
     setErr(null);
     setLoading(true);
     try {
-      const { token, user } = await loginApi(email.trim(), password);
-      // salva token/ruolo/email
-      setAuth(token, user.ruolo, user.email);
+      const res = await api.login(email.trim(), password);
+      // >>> SALVATAGGIO COERENTE <<<
+      localStorage.setItem("token", res.token);
+      localStorage.setItem("email", res.user.email);
+      localStorage.setItem("role", res.user.ruolo);
 
-      // routing basato sul ruolo
-      if (user.ruolo === "admin") {
-        nav("/dashboard", { replace: true });
+      // redirect in base al ruolo
+      if (res.user.ruolo === "admin") {
+        nav("/dashboard");
       } else {
-        // operatore o qualsiasi altro ruolo va alla pagina segnalazione
-        nav("/segnalazione", { replace: true });
+        nav("/segnalazione");
       }
     } catch (e: any) {
-      clearAuth();
-      setErr(e?.message || "Credenziali non valide");
+      setErr(e?.message || "Login fallito");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="page page-login">
-      <h1>Login</h1>
+    <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
+      <form
+        onSubmit={onSubmit}
+        style={{
+          width: 360,
+          padding: 24,
+          borderRadius: 12,
+          border: "1px solid #2b2f36",
+          background: "#0f172a",
+          color: "#e2e8f0",
+        }}
+      >
+        <h1 style={{ margin: "0 0 16px 0", fontSize: 22 }}>Login</h1>
 
-      <form onSubmit={onSubmit} className="card" style={{ maxWidth: 420 }}>
         <input
-          placeholder="Email"
           type="email"
+          placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          autoComplete="username"
+          style={{ width: "100%", padding: 10, marginBottom: 10 }}
           required
         />
         <input
-          placeholder="Password"
           type="password"
+          placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          autoComplete="current-password"
+          style={{ width: "100%", padding: 10, marginBottom: 16 }}
           required
         />
 
-        {err && <div className="error">{err}</div>}
+        {err && (
+          <div style={{ color: "#f87171", marginBottom: 12 }}>{err}</div>
+        )}
 
-        <button disabled={loading} type="submit">
+        <button
+          type="submit"
+          disabled={loading}
+          style={{
+            width: "100%",
+            padding: 10,
+            background: "#2563eb",
+            border: "none",
+            color: "white",
+            borderRadius: 8,
+            cursor: "pointer",
+            opacity: loading ? 0.7 : 1,
+          }}
+        >
           {loading ? "Accesso..." : "Accedi"}
         </button>
       </form>
