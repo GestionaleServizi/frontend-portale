@@ -1,158 +1,90 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { apiFetch, getToken } from "../api";
+// src/api.ts
+// Wrapper minimale per chiamate al backend + funzioni di dominio.
 
-type Categoria = { id: number; nome_categoria: string };
+const BASE = import.meta.env.VITE_API_BASE_URL; // es. https://segnalazioni-backend-production.up.railway.app/api
 
-export default function Segnalazione() {
-  const nav = useNavigate();
+if (!BASE) {
+  // Aiuta a debug se dimentichiamo la variabile in Railway
+  // (non rompere il build: solo console.error)
+  // eslint-disable-next-line no-console
+  console.error("VITE_API_BASE_URL mancante!");
+}
 
-  const now = new Date();
-  const [data, setData] = useState<string>(now.toISOString().slice(0, 10));
-  const [ora, setOra] = useState<string>(
-    `${String(now.getHours()).padStart(2, "0")}:${String(
-      now.getMinutes()
-    ).padStart(2, "0")}`
-  );
-  const [categoriaId, setCategoriaId] = useState<number | "">("");
-  const [descrizione, setDescrizione] = useState("");
-  const [cats, setCats] = useState<Categoria[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState<string | null>(null);
-  const [okMsg, setOkMsg] = useState<string | null>(null);
+// --- Token helpers ---
+export function getToken(): string | null {
+  return localStorage.getItem("token");
+}
 
-  // Carica categorie protette
-  useEffect(() => {
-    async function load() {
-      setErr(null);
-      setOkMsg(null);
-      setLoading(true);
+export function setAuth(token: string, role: string, email: string) {
+  localStorage.setItem("token", token);
+  localStorage.setItem("role", role);
+  localStorage.setItem("email", email);
+}
 
-      const token = getToken();
-      if (!token) {
-        nav("/login", { replace: true });
-        return;
-      }
+export function clearAuth() {
+  localStorage.removeItem("token");
+  localStorage.removeItem("role");
+  localStorage.removeItem("email");
+}
 
-      try {
-        const list = await apiFetch("/categorie", { method: "GET" });
-        setCats(list || []);
-      } catch (e: any) {
-        // se apiFetch ha tolto il token per 401, torno al login
-        if (!getToken()) {
-          nav("/login", { replace: true });
-          return;
-        }
-        setErr(e?.message || "Errore nel caricamento categorie");
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, [nav]);
+// --- HTTP helper ---
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const token = getToken();
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setErr(null);
-    setOkMsg(null);
+  const res = await fetch(`${BASE}${path}`, {
+    method: init.method ?? "GET",
+    headers: {
+      "Content-Type": "application/json",
+      ...(init.headers || {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: init.body,
+    credentials: "omit",
+  });
 
-    try {
-      if (!categoriaId) throw new Error("Seleziona una categoria");
-      await apiFetch("/segnalazioni", {
-        method: "POST",
-        body: JSON.stringify({
-          data,
-          ora,
-          descrizione,
-          categoria_id: Number(categoriaId),
-        }),
-      });
-      setOkMsg("Segnalazione salvata.");
-      setDescrizione("");
-      setCategoriaId("");
-    } catch (e: any) {
-      if (!getToken()) {
-        nav("/login", { replace: true });
-        return;
-      }
-      setErr(e?.message || "Errore nel salvataggio");
-    }
+  // Se la risposta non è JSON (es. 404 HTML), proviamo a leggere testo per messaggio
+  const isJson =
+    res.headers.get("content-type")?.toLowerCase().includes("application/json") ?? false;
+
+  if (!res.ok) {
+    const msg = isJson ? (await res.json())?.error ?? res.statusText : await res.text();
+    throw new Error(msg || `HTTP ${res.status}`);
   }
 
-  if (loading) return <div>Caricamento…</div>;
+  return (isJson ? await res.json() : ({} as T)) as T;
+}
 
-  return (
-    <div className="p-6 max-w-3xl mx-auto">
-      <h1 className="text-3xl font-bold mb-4">Nuova Segnalazione</h1>
+// --- API specifiche ---
 
-      {err && <div style={{ color: "crimson", marginBottom: 12 }}>{err}</div>}
-      {okMsg && (
-        <div style={{ color: "seagreen", marginBottom: 12 }}>{okMsg}</div>
-      )}
-
-      <form onSubmit={onSubmit}>
-        <div style={{ display: "grid", gap: 12, maxWidth: 520 }}>
-          <label>
-            Data
-            <input
-              type="date"
-              value={data}
-              onChange={(e) => setData(e.currentTarget.value)}
-              style={{ display: "block", padding: 6 }}
-            />
-          </label>
-
-          <label>
-            Ora
-            <input
-              type="time"
-              value={ora}
-              onChange={(e) => setOra(e.currentTarget.value)}
-              style={{ display: "block", padding: 6 }}
-            />
-          </label>
-
-          <label>
-            Categoria
-            <select
-              value={categoriaId}
-              onChange={(e) => setCategoriaId(Number(e.currentTarget.value))}
-              style={{ display: "block", padding: 6 }}
-            >
-              <option value="">— Seleziona —</option>
-              {cats.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nome_categoria}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            Descrizione
-            <textarea
-              value={descrizione}
-              onChange={(e) => setDescrizione(e.currentTarget.value)}
-              rows={4}
-              style={{ display: "block", padding: 6, width: "100%" }}
-              placeholder="Descrivi la segnalazione…"
-            />
-          </label>
-
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              type="button"
-              onClick={() => nav(-1)}
-              style={{ padding: "8px 12px" }}
-            >
-              Annulla
-            </button>
-            <button type="submit" style={{ padding: "8px 12px" }}>
-              Salva segnalazione
-            </button>
-          </div>
-        </div>
-      </form>
-    </div>
+// Login: POST /auth/login  -> { token, user: { ruolo, email, ... } }
+export async function loginApi(email: string, password: string): Promise<{
+  token: string;
+  user: { ruolo: string; email: string };
+}> {
+  const data = await request<{ token: string; user: { ruolo: string; email: string } }>(
+    "/auth/login",
+    {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    }
   );
+  return data;
+}
+
+// GET /categorie -> Array<{ id: number; nome_categoria: string }>
+export async function getCategorie(): Promise<Array<{ id: number; nome_categoria: string }>> {
+  return request("/categorie");
+}
+
+// POST /segnalazioni
+export async function createSegnalazione(payload: {
+  data: string; // ISO yyyy-mm-dd
+  ora: string;  // HH:mm
+  categoria_id: number;
+  descrizione: string;
+}): Promise<{ id: number }> {
+  return request("/segnalazioni", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
