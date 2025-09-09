@@ -2,18 +2,28 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import {
   createBrowserRouter,
+  RouterProvider,
   Navigate,
   Outlet,
-  RouterProvider,
+  useLocation,
 } from "react-router-dom";
 
 import "./styles.css";
 
+// Pagine
 import Login from "./pages/Login";
-import Segnalazione from "./pages/Segnalazione";          // la tua pagina form
-import DashboardAdmin from "./pages/DashboardAdmin";       // admin
-import ProtectedRoute, { getToken } from "./components/ProtectedRoute";
+import DashboardAdmin from "./pages/DashboardAdmin";
+import Segnalazione from "./pages/Segnalazione";
 
+// --- helpers storage
+function getToken() {
+  return localStorage.getItem("token");
+}
+function getRole() {
+  return localStorage.getItem("ruolo");
+}
+
+// --- layout base (wrapper opzionale)
 function AppLayout() {
   return (
     <div className="app">
@@ -22,42 +32,63 @@ function AppLayout() {
   );
 }
 
-// opzionale: redirect dalla root in base alla presenza del token
-function IndexRedirect() {
-  const hasToken = !!getToken();
-  return <Navigate to={hasToken ? "/segnalazione" : "/login"} replace />;
+// --- route guard: richiede token
+function Protected() {
+  const token = getToken();
+  const loc = useLocation();
+  if (!token) {
+    // niente token -> vai al login
+    return <Navigate to="/login" replace state={{ from: loc }} />;
+  }
+  return <Outlet />;
+}
+
+// --- solo admin
+function AdminOnly() {
+  const ruolo = getRole();
+  if (ruolo !== "admin") {
+    return <Navigate to="/segnalazione" replace />;
+  }
+  return <Outlet />;
 }
 
 const router = createBrowserRouter([
   {
-    path: "/",
     element: <AppLayout />,
     children: [
-      { index: true, element: <IndexRedirect /> },
+      // root: se ho token decido dove andare, altrimenti /login
+      {
+        index: true,
+        element: getToken() ? (
+          getRole() === "admin" ? (
+            <Navigate to="/dashboard" replace />
+          ) : (
+            <Navigate to="/segnalazione" replace />
+          )
+        ) : (
+          <Navigate to="/login" replace />
+        ),
+      },
 
-      // LOGIN: deve essere SOLO la pagina di login
       { path: "/login", element: <Login /> },
 
-      // PAGINE PROTETTE
       {
-        path: "/segnalazione",
-        element: (
-          <ProtectedRoute>
-            <Segnalazione />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: "/dashboard",
-        element: (
-          <ProtectedRoute>
-            <DashboardAdmin />
-          </ProtectedRoute>
-        ),
+        element: <Protected />, // da qui in giù serve il token
+        children: [
+          {
+            path: "/dashboard",
+            element: (
+              <AdminOnly>
+                <DashboardAdmin />
+              </AdminOnly>
+            ),
+          },
+          { path: "/segnalazione", element: <Segnalazione /> },
+        ],
       },
 
-      // 404
-      { path: "*", element: <Navigate to="/" replace /> },
+      // fallback
+      { path: "*", element: <Navigate to="/login" replace /> },
     ],
   },
 ]);
@@ -67,4 +98,3 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <RouterProvider router={router} />
   </React.StrictMode>
 );
-
