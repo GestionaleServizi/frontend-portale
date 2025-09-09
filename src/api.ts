@@ -1,85 +1,124 @@
 // src/api.ts
-const BASE = import.meta.env.VITE_API_BASE_URL;
+// Helper API centralizzato: evita doppio /api, aggiunge Authorization se presente
 
-// Recupera il token salvato
+type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
+type JsonRecord = Record<string, any>;
+
+const RAW_BASE = import.meta.env.VITE_API_BASE_URL ?? ""; 
+// Esempio consigliato: https://segnalazioni-backend-production.up.railway.app/api
+// Va bene anche senza /api, l'unione sotto è "safe".
+
+function joinUrl(base: string, path: string) {
+  const b = base.replace(/\/+$/, "");      // rimuove / finali
+  const p = path.replace(/^\/+/, "");      // rimuove / iniziali
+  return `${b}/${p}`;
+}
+
 export function getToken(): string | null {
   return localStorage.getItem("token");
 }
-
-// Funzione generica per chiamate API con token
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const token = getToken();
-
-  const res = await fetch(`${BASE}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...init.headers,
-    },
-  });
-
-  if (!res.ok) {
-    throw new Error(await res.text());
-  }
-  return res.json() as Promise<T>;
+export function getRole(): string | null {
+  return localStorage.getItem("role");
+}
+export function getEmail(): string | null {
+  return localStorage.getItem("email");
 }
 
-// =======================
-// AUTH
-// =======================
-export async function login(email: string, password: string) {
-  const res = await fetch(`${BASE}/auth/login`, {
+async function request<T = any>(path: string, options: RequestInit = {}): Promise<T> {
+  const url = joinUrl(RAW_BASE, path);
+  const token = getToken();
+
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    ...(options.headers || {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+
+  const res = await fetch(url, { ...options, headers });
+
+  // 401/403: forza logout chiaro lato chiamante
+  if (res.status === 401 || res.status === 403) {
+    const msg = await res.text().catch(() => "");
+    throw new Error(msg || "unauthorized");
+  }
+
+  if (!res.ok) {
+    const msg = await res.text().catch(() => "");
+    throw new Error(msg || `HTTP ${res.status}`);
+  }
+
+  // alcune route possono rispondere 204
+  if (res.status === 204) return undefined as unknown as T;
+
+  return (await res.json()) as T;
+}
+
+/* ===================== AUTH ===================== */
+
+type LoginResp =
+  | { ok: true; token?: string; user: { id: number; email: string; ruolo: string; clienteId?: number | null } }
+  | { error: string };
+
+export async function login(email: string, password: string): Promise<void> {
+  const data = await request<LoginResp>("/auth/login", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
 
-  return res.json();
+  if ("error" in data) throw new Error(data.error || "invalid credentials");
+
+  // salva dati base
+  localStorage.setItem("email", data.user.email);
+  localStorage.setItem("role", data.user.ruolo);
+
+  // token potrebbe non esserci (modalità “test in chiaro”). In quel caso azzeriamo comunque.
+  if (data.token) {
+    localStorage.setItem("token", data.token);
+  } else {
+    localStorage.removeItem("token");
+  }
 }
 
-// =======================
-// CATEGORIE
-// =======================
-export async function getCategorie(): Promise<Array<{ id: number; nome_categoria: string }>> {
-  return request("/categorie");
+export function logout() {
+  localStorage.removeItem("token");
+  localStorage.removeItem("role");
+  localStorage.removeItem("email");
 }
 
-export async function createCategoria(nome_categoria: string) {
-  return request("/categorie", {
-    method: "POST",
-    body: JSON.stringify({ nome_categoria }),
-  });
+/* ===================== CATEGORIE ===================== */
+
+export type Categoria = { id: number; nome_categoria: string };
+
+export async function getCategorie(): Promise<Categoria[]> {
+  const raw = await request<any>("/categorie");
+  // backend può restituire direttamente un array oppure { rows: [...] }
+  if (Array.isArray(raw)) return raw as Categoria[];
+  if (raw && Array.isArray(raw.rows)) return raw.rows as Categoria[];
+  return [];
 }
 
-export async function deleteCategoria(id: number) {
-  return request(`/categorie/${id}`, { method: "DELETE" });
-}
+/* ===================== SEGNALAZIONI ===================== */
 
-// =======================
-// CLIENTI (solo admin)
-// =======================
-export async function listClienti() {
-  return request("/clienti");
-}
+export type CreateSegnalazionePayload = {
+  data: string;      // YYYY-MM-DD
+  ora: string;       // HH:mm
+  categoria_id: number;
+  descrizione: string;
+};
 
-export async function upsertCliente(payload: any) {
-  return request("/clienti", {
+export async function createSegnalazione(payload: CreateSegnalazionePayload): Promise<{ ok: true }> {
+  return await request<{ ok: true }>("/segnalazioni", {
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
-// =======================
-// SEGNALAZIONI
-// =======================
-export async function listSegnalazioni() {
-  return request("/segnalazioni");
-}
-
-export async function createSegnalazione(payload: any) {
-  return request("/segnalazioni", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-}
+export default {
+  login,
+  logout,
+  getToken,
+  getRole,
+  getEmail,
+  getCategorie,
+  createSegnalazione,
+};
