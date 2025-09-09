@@ -5,9 +5,6 @@ import { getToken } from "../api";
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = getToken();
-  if (!token) {
-    // niente token → vai a login
-    return <Navigate to="/login" replace />;
-  }
+  if (!token) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
