@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../api";
+import { login } from "../api";  // ✅ import corretto dal nuovo api.ts
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -13,12 +13,11 @@ export default function Login() {
     setError(null);
 
     try {
-      const res = await api.login(email, password);
+      const res = await login(email, password);
 
-      // 🔹 salvo token, email e ruolo
+      // 🔹 salvo token e utente intero
       localStorage.setItem("token", res.token);
-      localStorage.setItem("email", res.user.email);
-      localStorage.setItem("role", res.user.ruolo);
+      localStorage.setItem("user", JSON.stringify(res.user));
 
       // redirect in base al ruolo
       if (res.user.ruolo === "admin") {
