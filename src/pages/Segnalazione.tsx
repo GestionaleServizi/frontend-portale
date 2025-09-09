@@ -1,7 +1,7 @@
 // src/pages/Segnalazione.tsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getCategorie, createSegnalazione } from "./api";
+import { getCategorie, createSegnalazione } from "../api";
 
 type Categoria = { id: number; nome_categoria: string };
 
