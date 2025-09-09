@@ -1,19 +1,22 @@
 // src/pages/Segnalazione.tsx
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { api, getToken } from "../api";
 
 type Categoria = { id: number; nome_categoria: string };
 
 export default function Segnalazione() {
+  // GUARDIA IMMEDIATA: se non c’è token, non renderizzare nulla di questa pagina
+  const token = getToken();
+  if (!token) return <Navigate to="/login" replace />;
+
   const nav = useNavigate();
   const [categorie, setCategorie] = useState<Categoria[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
-  // valori di default data/ora (local)
   const now = useMemo(() => new Date(), []);
-  const [data, setData] = useState(() => now.toISOString().slice(0, 10)); // yyyy-mm-dd
+  const [data, setData] = useState(() => now.toISOString().slice(0, 10));
   const [ora, setOra] = useState(() => {
     const hh = String(now.getHours()).padStart(2, "0");
     const mm = String(now.getMinutes()).padStart(2, "0");
@@ -22,28 +25,22 @@ export default function Segnalazione() {
   const [categoriaId, setCategoriaId] = useState<number | "">("");
   const [descrizione, setDescrizione] = useState("");
 
-  // Se non c'è token, rimbalza subito a login
   useEffect(() => {
-    if (!getToken()) {
-      nav("/login", { replace: true });
-      return;
-    }
     (async () => {
       try {
         setLoading(true);
         const cats = await api.listCategorie();
         setCategorie(cats);
       } catch (e: any) {
-        if (e?.message === "UNAUTHORIZED") {
-          nav("/login", { replace: true });
-          return;
+        // Se il wrapper ha lanciato "UNAUTHORIZED", lascia che ProtectedRoute gestisca al prossimo render
+        if (e?.message !== "UNAUTHORIZED") {
+          setErr(e?.message || "Errore nel caricamento categorie");
         }
-        setErr(e?.message || "Errore nel caricamento categorie");
       } finally {
         setLoading(false);
       }
     })();
-  }, [nav]);
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -59,22 +56,20 @@ export default function Segnalazione() {
         categoria_id: Number(categoriaId),
         descrizione: descrizione?.trim() || "",
       });
-      // dopo salvataggio: vai alla home operatore (o resetta il form)
       setDescrizione("");
       setCategoriaId("");
       alert("Segnalazione inserita!");
+      nav("/dashboard"); // o dove preferisci
     } catch (e: any) {
-      if (e?.message === "UNAUTHORIZED") {
-        nav("/login", { replace: true });
-        return;
+      if (e?.message !== "UNAUTHORIZED") {
+        setErr(e?.message || "Errore nel salvataggio");
       }
-      setErr(e?.message || "Errore nel salvataggio");
     }
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-sm text-gray-400">
+      <div className="min-h-screen flex items-center justify-center text-sm text-gray-500">
         Caricamento…
       </div>
     );
