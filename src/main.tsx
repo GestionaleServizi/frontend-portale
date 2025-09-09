@@ -1,34 +1,65 @@
-// src/main.tsx
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import {
+  createBrowserRouter,
+  Navigate,
+  Outlet,
+  RouterProvider,
+} from "react-router-dom";
 
-import Login from "./pages/Login.tsx";
-import Segnalazione from "./pages/Segnalazione.tsx";
-import DashboardAdmin from "./pages/DashboardAdmin.tsx";
+import "./styles.css";
 
-import ProtectedRoute from "./components/ProtectedRoute.tsx";
-import "./styles.css"; // o index.css
+import Login from "./pages/Login";
+import Segnalazione from "./pages/Segnalazione";          // la tua pagina form
+import DashboardAdmin from "./pages/DashboardAdmin";       // admin
+import ProtectedRoute, { getToken } from "./components/ProtectedRoute";
+
+function AppLayout() {
+  return (
+    <div className="app">
+      <Outlet />
+    </div>
+  );
+}
+
+// opzionale: redirect dalla root in base alla presenza del token
+function IndexRedirect() {
+  const hasToken = !!getToken();
+  return <Navigate to={hasToken ? "/segnalazione" : "/login"} replace />;
+}
 
 const router = createBrowserRouter([
-  { path: "/login", element: <Login /> },
   {
-    path: "/segnalazione",
-    element: (
-      <ProtectedRoute>
-        <Segnalazione />
-      </ProtectedRoute>
-    ),
+    path: "/",
+    element: <AppLayout />,
+    children: [
+      { index: true, element: <IndexRedirect /> },
+
+      // LOGIN: deve essere SOLO la pagina di login
+      { path: "/login", element: <Login /> },
+
+      // PAGINE PROTETTE
+      {
+        path: "/segnalazione",
+        element: (
+          <ProtectedRoute>
+            <Segnalazione />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "/dashboard",
+        element: (
+          <ProtectedRoute>
+            <DashboardAdmin />
+          </ProtectedRoute>
+        ),
+      },
+
+      // 404
+      { path: "*", element: <Navigate to="/" replace /> },
+    ],
   },
-  {
-    path: "/admin",
-    element: (
-      <ProtectedRoute>
-        <DashboardAdmin />
-      </ProtectedRoute>
-    ),
-  },
-  { path: "*", element: <Login /> },
 ]);
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
@@ -36,3 +67,4 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <RouterProvider router={router} />
   </React.StrictMode>
 );
+
