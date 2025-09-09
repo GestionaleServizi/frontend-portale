@@ -1,86 +1,69 @@
-// src/api.ts
+const BASE = import.meta.env.VITE_API_BASE_URL; // es: https://segnalazioni-backend-production.up.railway.app/api
 
-const BASE = import.meta.env.VITE_API_BASE_URL;
-
-// Helper per ottenere il token salvato in localStorage
+// 🔹 funzione per prendere il token salvato nel localStorage
 export function getToken(): string | null {
   return localStorage.getItem("token");
 }
 
-// Funzione generica per fare richieste al backend
+// 🔹 wrapper per tutte le richieste
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = getToken();
 
-  const res = await fetch(`${BASE}/api${path}`, {
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(init.headers || {}),
+  };
+
+  const res = await fetch(`${BASE}${path}`, {
     ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...init.headers,
-    },
+    headers,
   });
 
   if (!res.ok) {
-    const msg = await res.text().catch(() => "");
+    let msg = "";
+    try {
+      msg = await res.text();
+    } catch {
+      msg = res.statusText;
+    }
     throw new Error(msg || `HTTP ${res.status}`);
   }
 
   return res.json() as Promise<T>;
 }
 
-// ----------------- API ENDPOINTS -----------------
-
-// LOGIN
-export const api = {
-  async login(email: string, password: string) {
-    return request<{ token: string; role: string; email: string }>(
-      "/auth/login",
-      {
-        method: "POST",
-        body: JSON.stringify({ email, password }),
-      }
-    );
-  },
-
-  // CATEGORIE
-  listCategorie() {
-    return request<Array<{ id: number; nome_categoria: string }>>(
-      "/categorie"
-    );
-  },
-
-  createCategoria(nome_categoria: string) {
-    return request("/categorie", {
+// 🔹 API esportata
+const api = {
+  // --- AUTH ---
+  login: async (email: string, password: string) => {
+    return request<{ ok: boolean; token: string; user: any }>("/auth/login", {
       method: "POST",
-      body: JSON.stringify({ nome_categoria }),
+      body: JSON.stringify({ email, password }),
     });
   },
 
-  deleteCategoria(id: number) {
-    return request(`/categorie/${id}`, { method: "DELETE" });
+  // --- CATEGORIE ---
+  getCategorie: async () => {
+    return request<Array<{ id: number; nome_categoria: string }>>("/categorie");
   },
 
-  // CLIENTI
-  listClienti() {
+  // --- CLIENTI ---
+  listClienti: async () => {
     return request<Array<any>>("/clienti");
   },
 
-  createCliente(payload: any) {
-    return request("/clienti", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-  },
-
-  // SEGNALAZIONI
-  listSegnalazioni() {
+  // --- SEGNALAZIONI ---
+  listSegnalazioni: async () => {
     return request<Array<any>>("/segnalazioni");
   },
 
-  createSegnalazione(payload: any) {
+  createSegnalazione: async (payload: any) => {
     return request("/segnalazioni", {
       method: "POST",
       body: JSON.stringify(payload),
     });
   },
 };
+
+export default api;
