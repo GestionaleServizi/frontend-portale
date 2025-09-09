@@ -1,69 +1,131 @@
-const BASE = import.meta.env.VITE_API_BASE_URL; // es: https://segnalazioni-backend-production.up.railway.app/api
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
-// 🔹 funzione per prendere il token salvato nel localStorage
-export function getToken(): string | null {
-  return localStorage.getItem("token");
-}
-
-// 🔹 wrapper per tutte le richieste
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const token = getToken();
+// Helper per gestire richieste con token
+async function request(path: string, options: RequestInit = {}, auth = true) {
+  const token = localStorage.getItem("token");
 
   const headers: HeadersInit = {
     "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(init.headers || {}),
+    ...(options.headers || {}),
   };
 
-  const res = await fetch(`${BASE}${path}`, {
-    ...init,
+  if (auth && token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...options,
     headers,
   });
 
   if (!res.ok) {
-    let msg = "";
-    try {
-      msg = await res.text();
-    } catch {
-      msg = res.statusText;
-    }
-    throw new Error(msg || `HTTP ${res.status}`);
+    const errText = await res.text();
+    throw new Error(`API error ${res.status}: ${errText}`);
   }
 
-  return res.json() as Promise<T>;
+  if (res.status === 204) return null; // DELETE senza body
+  return res.json();
 }
 
-// 🔹 API esportata
-const api = {
-  // --- AUTH ---
-  login: async (email: string, password: string) => {
-    return request<{ ok: boolean; token: string; user: any }>("/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    });
-  },
+// =========================
+// AUTH
+// =========================
+export async function login(email: string, password: string) {
+  return request("/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  }, false);
+}
 
-  // --- CATEGORIE ---
-  getCategorie: async () => {
-    return request<Array<{ id: number; nome_categoria: string }>>("/categorie");
-  },
+// =========================
+// CATEGORIE
+// =========================
+export async function getCategorie() {
+  return request("/categorie", { method: "GET" });
+}
 
-  // --- CLIENTI ---
-  listClienti: async () => {
-    return request<Array<any>>("/clienti");
-  },
+export async function createCategoria(nome_categoria: string) {
+  return request("/categorie", {
+    method: "POST",
+    body: JSON.stringify({ nome_categoria }),
+  });
+}
 
-  // --- SEGNALAZIONI ---
-  listSegnalazioni: async () => {
-    return request<Array<any>>("/segnalazioni");
-  },
+export async function updateCategoria(id: number, nome_categoria: string) {
+  return request(`/categorie/${id}`, {
+    method: "PUT",
+    body: JSON.stringify({ nome_categoria }),
+  });
+}
 
-  createSegnalazione: async (payload: any) => {
-    return request("/segnalazioni", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-  },
-};
+export async function deleteCategoria(id: number) {
+  return request(`/categorie/${id}`, { method: "DELETE" });
+}
 
-export default api;
+// =========================
+// CLIENTI
+// =========================
+export async function getClienti() {
+  return request("/clienti", { method: "GET" });
+}
+
+export async function createCliente(data: {
+  nome_sala: string;
+  codice_sala: string;
+  email?: string;
+  referente?: string;
+  telefono?: string;
+}) {
+  return request("/clienti", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateCliente(id: number, data: {
+  nome_sala: string;
+  email?: string;
+  referente?: string;
+  telefono?: string;
+}) {
+  return request(`/clienti/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+// =========================
+// SEGNALAZIONI
+// =========================
+export async function getSegnalazioni() {
+  return request("/segnalazioni", { method: "GET" });
+}
+
+export async function createSegnalazione(data: {
+  data: string;
+  ora: string;
+  descrizione?: string;
+  categoria_id: number;
+}) {
+  return request("/segnalazioni", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateSegnalazione(id: number, data: {
+  data: string;
+  ora: string;
+  descrizione?: string;
+  categoria_id: number;
+  cliente_id: number;
+}) {
+  return request(`/segnalazioni/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteSegnalazione(id: number) {
+  return request(`/segnalazioni/${id}`, { method: "DELETE" });
+}
