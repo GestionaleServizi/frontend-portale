@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../api";
+import { getCategorie, createSegnalazione } from "../api";  // ✅ export nominati
 
 type Categoria = {
   id: number;
@@ -40,7 +40,7 @@ export default function Segnalazione() {
 
     async function run() {
       try {
-        const rows = await api.getCategorie();
+        const rows = await getCategorie();
         if (alive) setCategorie(rows);
       } catch (err: any) {
         setMsg("Errore nel caricamento categorie");
@@ -61,10 +61,10 @@ export default function Segnalazione() {
     setMsg(null);
 
     try {
-      await api.createSegnalazione({
+      await createSegnalazione({
         data,
         ora,
-        categoria_id: categoriaId,
+        categoria_id: categoriaId as number,
         descrizione,
       });
       setMsg("✅ Segnalazione salvata con successo");
