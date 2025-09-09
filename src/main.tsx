@@ -3,92 +3,66 @@ import ReactDOM from "react-dom/client";
 import {
   createBrowserRouter,
   RouterProvider,
-  Navigate,
   Outlet,
-  useLocation,
+  Navigate,
 } from "react-router-dom";
 
 import "./styles.css";
-
-// Pagine
 import Login from "./pages/Login";
-import DashboardAdmin from "./pages/DashboardAdmin";
+import Dashboard from "./pages/DashboardAdmin";
 import Segnalazione from "./pages/Segnalazione";
 
-// --- helpers storage
-function getToken() {
-  return localStorage.getItem("token");
-}
-function getRole() {
-  return localStorage.getItem("ruolo");
+function isAuth() {
+  try {
+    return !!localStorage.getItem("token");
+  } catch {
+    return false;
+  }
 }
 
-// --- layout base (wrapper opzionale)
 function AppLayout() {
+  // mostra header solo se autenticato
+  const authed = isAuth();
   return (
     <div className="app">
+      {authed && (
+        <header className="nav">
+          <a href="/dashboard">Dashboard</a>
+          <a href="/segnalazione">Segnalazione</a>
+          <button
+            onClick={() => {
+              localStorage.clear();
+              window.location.href = "/login";
+            }}
+          >
+            Logout
+          </button>
+        </header>
+      )}
       <Outlet />
     </div>
   );
 }
 
-// --- route guard: richiede token
 function Protected() {
-  const token = getToken();
-  const loc = useLocation();
-  if (!token) {
-    // niente token -> vai al login
-    return <Navigate to="/login" replace state={{ from: loc }} />;
-  }
-  return <Outlet />;
-}
-
-// --- solo admin
-function AdminOnly() {
-  const ruolo = getRole();
-  if (ruolo !== "admin") {
-    return <Navigate to="/segnalazione" replace />;
-  }
-  return <Outlet />;
+  return isAuth() ? <Outlet /> : <Navigate to="/login" replace />;
 }
 
 const router = createBrowserRouter([
   {
     element: <AppLayout />,
     children: [
-      // root: se ho token decido dove andare, altrimenti /login
-      {
-        index: true,
-        element: getToken() ? (
-          getRole() === "admin" ? (
-            <Navigate to="/dashboard" replace />
-          ) : (
-            <Navigate to="/segnalazione" replace />
-          )
-        ) : (
-          <Navigate to="/login" replace />
-        ),
-      },
-
+      { path: "/", element: <Navigate to="/login" replace /> },
       { path: "/login", element: <Login /> },
 
       {
-        element: <Protected />, // da qui in giù serve il token
+        element: <Protected />,
         children: [
-          {
-            path: "/dashboard",
-            element: (
-              <AdminOnly>
-                <DashboardAdmin />
-              </AdminOnly>
-            ),
-          },
+          { path: "/dashboard", element: <Dashboard /> },
           { path: "/segnalazione", element: <Segnalazione /> },
         ],
       },
-
-      // fallback
-      { path: "*", element: <Navigate to="/login" replace /> },
+      { path: "*", element: <div>404</div> },
     ],
   },
 ]);
