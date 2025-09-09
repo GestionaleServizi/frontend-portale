@@ -1,12 +1,13 @@
-// src/pages/Segnalazione.tsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api, { getCategorie, type Categoria, createSegnalazione } from "../api";
+import { api } from "../api";
+
+type Categoria = { id: number; nome_categoria: string };
 
 export default function Segnalazione() {
   const nav = useNavigate();
 
-  // form state
+  // ----- stato form -----
   const [data, setData] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [ora, setOra] = useState<string>(() => {
     const d = new Date();
@@ -14,144 +15,154 @@ export default function Segnalazione() {
     const m = String(d.getMinutes()).padStart(2, "0");
     return `${h}:${m}`;
   });
-  const [categorie, setCategorie] = useState<Categoria[]>([]);
   const [categoriaId, setCategoriaId] = useState<number | "">("");
   const [descrizione, setDescrizione] = useState<string>("");
 
-  // UI state
+  // ----- stato ui -----
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // token (se assente ➜ back dirottato dal Protected nel router, ma metto guardia extra)
+  // ----- categorie -----
+  const [categorie, setCategorie] = useState<Categoria[]>([]);
+
+  // token dal localStorage (senza triggerare re-render continui)
   const token = useMemo(() => localStorage.getItem("token"), []);
 
-  // se non c'è token (in modalità JWT), prova a continuare: se il backend è in “test senza JWT”
-  // le rotte potrebbero comunque permettere l’accesso. Se il backend richiede token, cadrà in 401
-  // e mostreremo un messaggio + redirect al login.
+  // se non c'è token -> torna al login
+  useEffect(() => {
+    if (!token) {
+      nav("/login", { replace: true });
+    }
+  }, [token, nav]);
+
+  // carica le categorie (route protetta)
   useEffect(() => {
     let alive = true;
-
-    async function load() {
+    async function run() {
       setError(null);
-      setMsg(null);
       try {
-        const list = await getCategorie();
+        const rows = await api.listCategorie(); // <— usa l'oggetto api
         if (!alive) return;
-        setCategorie(list);
-      } catch (e: any) {
+        setCategorie(rows);
+      } catch (err: any) {
         if (!alive) return;
-        const m = String(e?.message || e);
-        setError(m);
-        // se è chiaramente un problema di auth, rimanda al login
-        if (m.toLowerCase().includes("unauthorized") || m.startsWith("HTTP 401")) {
-          setTimeout(() => nav("/login", { replace: true }), 1000);
-        }
+        setError(err?.message || "Errore nel caricamento categorie");
       }
     }
-
-    load();
+    if (token) run();
     return () => {
       alive = false;
     };
-  }, [nav]);
+  }, [token]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setMsg(null);
+
+    if (!token) {
+      nav("/login", { replace: true });
+      return;
+    }
+    if (!categoriaId) {
+      setError("Seleziona una categoria");
+      return;
+    }
+
     setLoading(true);
     try {
-      if (!categoriaId || typeof categoriaId !== "number") {
-        setError("Seleziona una categoria");
-        setLoading(false);
-        return;
-      }
-      await createSegnalazione({
+      await api.createSegnalazione({
         data,
         ora,
-        categoria_id: categoriaId,
-        descrizione: descrizione.trim(),
-      });
-      setMsg("Segnalazione salvata ✅");
-      // reset basilare
-      setDescrizione("");
+        categoria_id: Number(categoriaId),
+        descrizione,
+      }); // <— usa l'oggetto api
+
+      setMsg("Segnalazione salvata con successo");
+      // reset (lascia data/ora)
       setCategoriaId("");
-    } catch (e: any) {
-      setError(String(e?.message || e));
+      setDescrizione("");
+    } catch (err: any) {
+      setError(err?.message || "Errore nel salvataggio");
     } finally {
       setLoading(false);
     }
   }
 
+  // --- UI ---
   return (
-    <div className="page">
+    <div className="page page--center">
       <div className="card">
         <h1>Nuova Segnalazione</h1>
 
-        {error && <p style={{ color: "#f87171", marginBottom: 12 }}>{error}</p>}
-        {msg && <p style={{ color: "#4ade80", marginBottom: 12 }}>{msg}</p>}
+        {error && <div className="alert alert--error">{error}</div>}
+        {msg && <div className="alert alert--ok">{msg}</div>}
 
         <form onSubmit={onSubmit} className="form">
-          <label>Data</label>
-          <input type="date" value={data} onChange={(e) => setData(e.target.value)} required />
+          <label>
+            <span>Data</span>
+            <input
+              type="date"
+              value={data}
+              onChange={(e) => setData(e.target.value)}
+              required
+            />
+          </label>
 
-          <label>Ora</label>
-          <input type="time" value={ora} onChange={(e) => setOra(e.target.value)} required />
+          <label>
+            <span>Ora</span>
+            <input
+              type="time"
+              value={ora}
+              onChange={(e) => setOra(e.target.value)}
+              required
+            />
+          </label>
 
-          <label>Categoria</label>
-          <select
-            value={categoriaId}
-            onChange={(e) => setCategoriaId(e.target.value ? Number(e.target.value) : "")}
-            required
-          >
-            <option value="">— Seleziona —</option>
-            {categorie.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nome_categoria}
-              </option>
-            ))}
-          </select>
+          <label>
+            <span>Categoria</span>
+            <select
+              value={categoriaId}
+              onChange={(e) => setCategoriaId(e.target.value ? Number(e.target.value) : "")}
+              disabled={!categorie.length}
+              required
+            >
+              <option value="">— Seleziona —</option>
+              {categorie.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nome_categoria}
+                </option>
+              ))}
+            </select>
+          </label>
 
-          <textarea
-            placeholder="Descrivi la segnalazione…"
-            value={descrizione}
-            onChange={(e) => setDescrizione(e.target.value)}
-            rows={4}
-          />
+          <label>
+            <span>Descrizione</span>
+            <textarea
+              rows={4}
+              placeholder="Descrivi la segnalazione…"
+              value={descrizione}
+              onChange={(e) => setDescrizione(e.target.value)}
+              required
+            />
+          </label>
 
-          <div className="actions">
-            <button type="button" onClick={() => nav(-1)} className="btn ghost">
+          <div className="form__actions">
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => nav(-1)}
+              disabled={loading}
+            >
               Annulla
             </button>
-            <button type="submit" className="btn primary" disabled={loading}>
+            <button className="btn btn--primary" disabled={loading}>
               {loading ? "Salvataggio…" : "Salva segnalazione"}
             </button>
           </div>
         </form>
       </div>
-
-      {/* Stili minimi coerenti con il tuo dark theme attuale */}
-      <style>{`
-        .page { min-height: 100vh; display:flex; align-items:center; justify-content:center; background: radial-gradient(1200px 600px at 50% -200px, #1f2a44 0%, #0b1220 60%, #090f1a 100%); padding:20px; }
-        .card { width: min(800px, 92vw); background: rgba(14,21,34,0.85); border:1px solid rgba(255,255,255,0.06);
-                border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.03);
-                padding: 24px; color: #e5e7eb; backdrop-filter: blur(6px);}
-        h1 { font-size: 26px; font-weight: 700; letter-spacing: .3px; color:#fff; margin:0 0 16px 0; }
-        .form { display:grid; grid-template-columns: 1fr; gap: 12px; }
-        label { font-size: 12px; text-transform: uppercase; color:#9fb3c8; letter-spacing:.08em;}
-        input, select, textarea { background: #0f172a; color:#e5e7eb; border:1px solid rgba(255,255,255,.08);
-          border-radius: 10px; padding: 10px 12px; outline:none; }
-        input:focus, select:focus, textarea:focus { border-color:#60a5fa; box-shadow: 0 0 0 3px rgba(96,165,250,.15); }
-        textarea { resize: vertical; }
-        .actions { display:flex; gap:10px; justify-content:flex-end; margin-top: 8px; }
-        .btn { border-radius: 10px; padding: 10px 14px; border:1px solid rgba(255,255,255,.1); background:#111827; color:#e5e7eb; cursor:pointer; }
-        .btn:hover { background:#0b1220; }
-        .btn.primary { background:#2563eb; border-color:#2563eb; }
-        .btn.primary:hover { background:#1d4ed8; }
-        .btn.ghost { background: transparent; }
-      `}</style>
     </div>
   );
 }
-
