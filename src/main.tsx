@@ -6,7 +6,8 @@ import {
   Outlet,
   Navigate,
 } from "react-router-dom";
-import { ChakraProvider } from "@chakra-ui/react"; // 👉 aggiunto
+import { ChakraProvider } from "@chakra-ui/react";
+import theme from "./theme"; // ✅ import del tema personalizzato
 
 import "./styles.css";
 import Login from "./pages/Login";
@@ -22,7 +23,6 @@ function isAuth() {
 }
 
 function AppLayout() {
-  // mostra header solo se autenticato
   const authed = isAuth();
   return (
     <div className="app">
@@ -55,7 +55,6 @@ const router = createBrowserRouter([
     children: [
       { path: "/", element: <Navigate to="/login" replace /> },
       { path: "/login", element: <Login /> },
-
       {
         element: <Protected />,
         children: [
@@ -70,7 +69,7 @@ const router = createBrowserRouter([
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <ChakraProvider>
+    <ChakraProvider theme={theme}>
       <RouterProvider router={router} />
     </ChakraProvider>
   </React.StrictMode>
