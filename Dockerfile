@@ -2,8 +2,7 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY package*.json ./
-# forza installazione pulita
-RUN rm -rf node_modules package-lock.json && npm install
+RUN rm -rf node_modules && npm cache clean --force && npm install
 COPY . .
 RUN npm run build
 
