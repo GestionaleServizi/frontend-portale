@@ -3,7 +3,7 @@ FROM node:22-alpine AS build
 WORKDIR /app
 COPY package*.json ./
 # forza installazione pulita
-RUN rm -rf node_modules package-lock.json && npm ci
+RUN rm -rf node_modules package-lock.json && npm install
 COPY . .
 RUN npm run build
 
@@ -12,7 +12,7 @@ FROM node:22-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /app/package*.json ./
-RUN npm ci --omit=dev
+RUN rm -rf node_modules package-lock.json && npm install --omit=dev
 COPY --from=build /app/dist ./dist
 EXPOSE 3000
 # Serve static build with 'serve'
