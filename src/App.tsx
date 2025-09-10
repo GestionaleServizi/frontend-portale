@@ -8,7 +8,7 @@ import AdminPage from "./pages/AdminPage";
 import DashboardAdmin from "./pages/DashboardAdmin";
 import ClientiPage from "./pages/ClientiPage";
 import CategoriePage from "./pages/CategoriePage";
-import ErrorPage from "./pages/ErrorPage"; // 👉 nuova pagina di errore
+import ErrorBoundary from "./ErrorBoundary"; // 👉 nuovo import
 
 // Protected route semplice
 function ProtectedRoute({ children }: { children: JSX.Element }) {
@@ -34,64 +34,61 @@ function AdminRoute({ children }: { children: JSX.Element }) {
 
 export default function App() {
   return (
-    <Router>
-      <Routes>
-        {/* Public routes */}
-        <Route path="/login" element={<Login />} errorElement={<ErrorPage />} />
-        <Route path="/" element={<Welcome />} errorElement={<ErrorPage />} />
+    <ErrorBoundary>
+      <Router>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/" element={<Welcome />} />
 
-        {/* Operatore */}
-        <Route
-          path="/segnalazione"
-          element={
-            <ProtectedRoute>
-              <Segnalazione />
-            </ProtectedRoute>
-          }
-          errorElement={<ErrorPage />}
-        />
+          {/* Operatore */}
+          <Route
+            path="/segnalazione"
+            element={
+              <ProtectedRoute>
+                <Segnalazione />
+              </ProtectedRoute>
+            }
+          />
 
-        {/* Admin */}
-        <Route
-          path="/admin"
-          element={
-            <AdminRoute>
-              <AdminPage />
-            </AdminRoute>
-          }
-          errorElement={<ErrorPage />}
-        />
-        <Route
-          path="/dashboard"
-          element={
-            <AdminRoute>
-              <DashboardAdmin />
-            </AdminRoute>
-          }
-          errorElement={<ErrorPage />}
-        />
-        <Route
-          path="/clienti"
-          element={
-            <AdminRoute>
-              <ClientiPage />
-            </AdminRoute>
-          }
-          errorElement={<ErrorPage />}
-        />
-        <Route
-          path="/categorie"
-          element={
-            <AdminRoute>
-              <CategoriePage />
-            </AdminRoute>
-          }
-          errorElement={<ErrorPage />}
-        />
+          {/* Admin */}
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <AdminPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <AdminRoute>
+                <DashboardAdmin />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/clienti"
+            element={
+              <AdminRoute>
+                <ClientiPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/categorie"
+            element={
+              <AdminRoute>
+                <CategoriePage />
+              </AdminRoute>
+            }
+          />
 
-        {/* Catch all */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Router>
+          {/* Catch all */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Router>
+    </ErrorBoundary>
   );
 }
