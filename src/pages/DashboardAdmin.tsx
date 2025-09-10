@@ -43,18 +43,18 @@ export default function DashboardAdmin() {
   const [segnalazioni, setSegnalazioni] = useState<Segnalazione[]>([]);
   const [categorie, setCategorie] = useState<any[]>([]);
   const [clienti, setClienti] = useState<any[]>([]);
+  const [utenti, setUtenti] = useState<any[]>([]);
   const [filtroData, setFiltroData] = useState<string>("");
   const [filtroCategoria, setFiltroCategoria] = useState<string>("");
   const [filtroCliente, setFiltroCliente] = useState<string>("");
 
   const nav = useNavigate();
   const toast = useToast();
+  const token = localStorage.getItem("token");
   const userEmail = "admin@tuazienda.it"; // TODO: ricavare da localStorage
 
   // Carica dati dal backend
   useEffect(() => {
-    const token = localStorage.getItem("token");
-
     // Segnalazioni
     fetch(`${import.meta.env.VITE_API_BASE_URL}/segnalazioni`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -99,7 +99,22 @@ export default function DashboardAdmin() {
           isClosable: true,
         })
       );
-  }, [toast]);
+
+    // Utenti
+    fetch(`${import.meta.env.VITE_API_BASE_URL}/utenti`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.json())
+      .then(setUtenti)
+      .catch(() =>
+        toast({
+          title: "Errore caricamento utenti",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        })
+      );
+  }, [toast, token]);
 
   const handleLogout = () => {
     localStorage.clear();
@@ -121,6 +136,65 @@ export default function DashboardAdmin() {
     const matchCliente = filtroCliente ? s.nome_sala === filtroCliente : true;
     return matchData && matchCategoria && matchCliente;
   });
+
+  // Esporta CSV
+  const esportaCSV = () => {
+    const header = ["ID", "Data", "Ora", "Categoria", "Sala", "Descrizione"];
+    const rows = segnalazioniFiltrate.map((s) => [
+      s.id,
+      formatDate(s.data),
+      s.ora,
+      s.nome_categoria || "",
+      s.nome_sala || "",
+      s.descrizione || "",
+    ]);
+
+    const csvContent =
+      "data:text/csv;charset=utf-8," +
+      [header, ...rows].map((e) => e.join(";")).join("\n");
+
+    const link = document.createElement("a");
+    link.setAttribute("href", encodeURI(csvContent));
+    link.setAttribute("download", "segnalazioni.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Esporta PDF
+  const esportaPDF = () => {
+    const printContent = `
+      <h2>Segnalazioni</h2>
+      <table border="1" cellspacing="0" cellpadding="4">
+        <thead>
+          <tr>
+            <th>ID</th><th>Data</th><th>Ora</th>
+            <th>Categoria</th><th>Sala</th><th>Descrizione</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${segnalazioniFiltrate
+            .map(
+              (s) => `
+            <tr>
+              <td>${s.id}</td>
+              <td>${formatDate(s.data)}</td>
+              <td>${s.ora}</td>
+              <td>${s.nome_categoria || ""}</td>
+              <td>${s.nome_sala || ""}</td>
+              <td>${s.descrizione || ""}</td>
+            </tr>`
+            )
+            .join("")}
+        </tbody>
+      </table>
+    `;
+
+    const newWin = window.open("", "_blank");
+    newWin!.document.write(printContent);
+    newWin!.print();
+    newWin!.close();
+  };
 
   return (
     <Flex minH="100vh" bg="gray.50" direction="column">
@@ -161,7 +235,7 @@ export default function DashboardAdmin() {
           </Box>
           <Box p={6} bg="white" borderRadius="lg" shadow="md" textAlign="center">
             <Text fontSize="sm">👥 Utenti</Text>
-            <Heading size="lg">--</Heading>
+            <Heading size="lg">{utenti.length}</Heading>
           </Box>
         </SimpleGrid>
 
@@ -226,6 +300,16 @@ export default function DashboardAdmin() {
             </Tbody>
           </Table>
         </Box>
+
+        {/* Bottoni esportazione */}
+        <HStack spacing={6} justify="center" mt={4}>
+          <Button colorScheme="green" onClick={esportaCSV}>
+            ⬇️ Esporta CSV
+          </Button>
+          <Button colorScheme="blue" onClick={esportaPDF}>
+            ⬇️ Esporta PDF
+          </Button>
+        </HStack>
       </Flex>
     </Flex>
   );
