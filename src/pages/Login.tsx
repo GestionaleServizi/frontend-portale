@@ -1,105 +1,106 @@
 import React, { useState } from "react";
 import {
-  Box,
-  Button,
   Flex,
+  Box,
   FormControl,
   FormLabel,
   Input,
-  Stack,
+  Button,
   Heading,
-  Image,
   useToast,
-  useBreakpointValue,
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
-import { login } from "../api";
 
-export default function LoginPage() {
+export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const nav = useNavigate();
+  const [loading, setLoading] = useState(false);
   const toast = useToast();
+  const nav = useNavigate();
 
-  const boxPadding = useBreakpointValue({ base: 6, md: 8 });
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async () => {
+    setLoading(true);
     try {
-      const { token, user } = await login(email, password);
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user));
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-      if (user.ruolo === "admin") {
-        nav("/dashboard");
+      if (!res.ok) {
+        throw new Error("Credenziali non valide");
+      }
+
+      const data = await res.json();
+
+      // Salva token e user nel localStorage
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      toast({
+        title: "Login effettuato",
+        status: "success",
+        duration: 2000,
+        isClosable: true,
+      });
+
+      // Redirect in base al ruolo
+      if (data.user.ruolo === "admin") {
+        nav("/dashboard", { replace: true });
+      } else if (data.user.ruolo === "operatore") {
+        nav("/segnalazione", { replace: true });
       } else {
-        nav("/segnalazione");
+        nav("/login", { replace: true }); // fallback
       }
     } catch (err: any) {
       toast({
         title: "Errore login",
-        description: "Credenziali non valide",
+        description: err.message,
         status: "error",
-        duration: 4000,
+        duration: 3000,
         isClosable: true,
       });
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <Flex minH="100vh" align="center" justify="center" bg="gray.50" px={4}>
+    <Flex minH="100vh" align="center" justify="center" bg="gray.50">
       <Box
-        w="full"
-        maxW="md"
-        p={boxPadding}
-        borderWidth={1}
-        borderRadius="lg"
         bg="white"
-        shadow="lg"
+        p={8}
+        rounded="lg"
+        shadow="md"
+        w={{ base: "90%", md: "400px" }}
       >
-        <Flex justify="center" mb={6}>
-          <Image
-            src="/servizinet_logo.png" // ✅ deve stare in /public
-            alt="ServiziNet Logo"
-            boxSize={{ base: "100px", md: "150px" }}
-          />
-        </Flex>
-        <Heading size="sm" textAlign="center" color="gray.500" mb={6}>
-          Portale Segnalazioni Sale
+        <Heading mb={6} textAlign="center">
+          Login
         </Heading>
-
-        <form onSubmit={handleSubmit}>
-          <Stack spacing={4}>
-            <FormControl id="email" isRequired>
-              <FormLabel>Email</FormLabel>
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Inserisci la tua email"
-                size={useBreakpointValue({ base: "sm", md: "md" })}
-              />
-            </FormControl>
-            <FormControl id="password" isRequired>
-              <FormLabel>Password</FormLabel>
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Inserisci la password"
-                size={useBreakpointValue({ base: "sm", md: "md" })}
-              />
-            </FormControl>
-            <Button
-              type="submit"
-              colorScheme="brand" // 👉 usa il colore personalizzato del tema
-              w="full"
-              size={useBreakpointValue({ base: "sm", md: "md" })}
-            >
-              Accedi
-            </Button>
-          </Stack>
-        </form>
+        <FormControl id="email" mb={4}>
+          <FormLabel>Email</FormLabel>
+          <Input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </FormControl>
+        <FormControl id="password" mb={6}>
+          <FormLabel>Password</FormLabel>
+          <Input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </FormControl>
+        <Button
+          colorScheme="blue"
+          w="full"
+          onClick={handleLogin}
+          isLoading={loading}
+        >
+          Accedi
+        </Button>
       </Box>
     </Flex>
   );
