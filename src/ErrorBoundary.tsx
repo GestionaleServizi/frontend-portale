@@ -22,7 +22,12 @@ export default class ErrorBoundary extends React.Component<Props, State> {
       return (
         <div style={{ padding: "2rem", textAlign: "center" }}>
           <h2>⚠️ Errore di applicazione</h2>
-          <p>Qualcosa è andato storto. Torna alla <a href="/">home</a>.</p>
+          <p>
+            Qualcosa è andato storto. Torna alla{" "}
+            <a href="/" style={{ color: "blue", textDecoration: "underline" }}>
+              home
+            </a>.
+          </p>
         </div>
       );
     }
