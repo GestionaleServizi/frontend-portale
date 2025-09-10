@@ -7,9 +7,11 @@ import {
   Input,
   Button,
   Heading,
+  Image,
   useToast,
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
+import logo from "../assets/logo.png"; // 👈 Assicurati che il file logo sia in src/assets
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -71,12 +73,17 @@ export default function Login() {
         bg="white"
         p={8}
         rounded="lg"
-        shadow="md"
+        shadow="lg"
         w={{ base: "90%", md: "400px" }}
+        textAlign="center"
       >
-        <Heading mb={6} textAlign="center">
-          Login
+        {/* Logo */}
+        <Image src={logo} alt="ServiziNet" w="120px" mx="auto" mb={6} />
+
+        <Heading mb={6} fontSize="xl">
+          Accedi
         </Heading>
+
         <FormControl id="email" mb={4}>
           <FormLabel>Email</FormLabel>
           <Input
@@ -85,6 +92,7 @@ export default function Login() {
             onChange={(e) => setEmail(e.target.value)}
           />
         </FormControl>
+
         <FormControl id="password" mb={6}>
           <FormLabel>Password</FormLabel>
           <Input
@@ -93,6 +101,7 @@ export default function Login() {
             onChange={(e) => setPassword(e.target.value)}
           />
         </FormControl>
+
         <Button
           colorScheme="blue"
           w="full"
