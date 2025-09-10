@@ -9,6 +9,19 @@ import DashboardAdmin from "./pages/DashboardAdmin";
 import ClientiPage from "./pages/ClientiPage";
 import CategoriePage from "./pages/CategoriePage";
 
+// Pagina di errore semplice
+function ErrorPage() {
+  return (
+    <div style={{ padding: "2rem", textAlign: "center" }}>
+      <h2>⚠️ Errore di applicazione</h2>
+      <p>Qualcosa è andato storto. Riprova oppure torna alla home.</p>
+      <a href="/" style={{ color: "blue", textDecoration: "underline" }}>
+        Vai alla Home
+      </a>
+    </div>
+  );
+}
+
 // Protected route semplice
 function ProtectedRoute({ children }: { children: JSX.Element }) {
   const token = localStorage.getItem("token");
@@ -31,23 +44,13 @@ function AdminRoute({ children }: { children: JSX.Element }) {
   return children;
 }
 
-// 👉 fallback element per errori
-function ErrorFallback() {
-  return (
-    <div style={{ padding: "2rem", textAlign: "center" }}>
-      <h2>⚠️ Errore di navigazione</h2>
-      <p>Qualcosa è andato storto. Riprova oppure torna alla <a href="/">home</a>.</p>
-    </div>
-  );
-}
-
 export default function App() {
   return (
     <Router>
       <Routes>
         {/* Public routes */}
-        <Route path="/login" element={<Login />} errorElement={<ErrorFallback />} />
-        <Route path="/" element={<Welcome />} errorElement={<ErrorFallback />} />
+        <Route path="/login" element={<Login />} errorElement={<ErrorPage />} />
+        <Route path="/" element={<Welcome />} errorElement={<ErrorPage />} />
 
         {/* Operatore */}
         <Route
@@ -57,7 +60,7 @@ export default function App() {
               <Segnalazione />
             </ProtectedRoute>
           }
-          errorElement={<ErrorFallback />}
+          errorElement={<ErrorPage />}
         />
 
         {/* Admin */}
@@ -68,7 +71,7 @@ export default function App() {
               <AdminPage />
             </AdminRoute>
           }
-          errorElement={<ErrorFallback />}
+          errorElement={<ErrorPage />}
         />
         <Route
           path="/dashboard"
@@ -77,7 +80,7 @@ export default function App() {
               <DashboardAdmin />
             </AdminRoute>
           }
-          errorElement={<ErrorFallback />}
+          errorElement={<ErrorPage />}
         />
         <Route
           path="/clienti"
@@ -86,7 +89,7 @@ export default function App() {
               <ClientiPage />
             </AdminRoute>
           }
-          errorElement={<ErrorFallback />}
+          errorElement={<ErrorPage />}
         />
         <Route
           path="/categorie"
@@ -95,7 +98,7 @@ export default function App() {
               <CategoriePage />
             </AdminRoute>
           }
-          errorElement={<ErrorFallback />}
+          errorElement={<ErrorPage />}
         />
 
         {/* Catch all */}
