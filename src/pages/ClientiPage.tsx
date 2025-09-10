@@ -38,7 +38,7 @@ type Cliente = {
   created_at?: string;
 };
 
-export default function Clienti() {
+export default function ClientiPage() {
   const { token } = useAuth();
   const [clienti, setClienti] = useState<Cliente[]>([]);
   const [selected, setSelected] = useState<Cliente | null>(null);
