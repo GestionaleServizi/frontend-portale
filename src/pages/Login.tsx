@@ -11,7 +11,7 @@ import {
   useToast,
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
-import logo from "../assets/logo.png"; // 👈 Assicurati che il file logo sia in src/assets
+import logo from "/servizinet_logo.png"; // 👈 Assicurati che il file logo sia in src/assets
 
 export default function Login() {
   const [email, setEmail] = useState("");
