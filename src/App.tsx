@@ -31,13 +31,23 @@ function AdminRoute({ children }: { children: JSX.Element }) {
   return children;
 }
 
+// 👉 fallback element per errori
+function ErrorFallback() {
+  return (
+    <div style={{ padding: "2rem", textAlign: "center" }}>
+      <h2>⚠️ Errore di navigazione</h2>
+      <p>Qualcosa è andato storto. Riprova oppure torna alla <a href="/">home</a>.</p>
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <Router>
       <Routes>
         {/* Public routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/" element={<Welcome />} />
+        <Route path="/login" element={<Login />} errorElement={<ErrorFallback />} />
+        <Route path="/" element={<Welcome />} errorElement={<ErrorFallback />} />
 
         {/* Operatore */}
         <Route
@@ -47,6 +57,7 @@ export default function App() {
               <Segnalazione />
             </ProtectedRoute>
           }
+          errorElement={<ErrorFallback />}
         />
 
         {/* Admin */}
@@ -57,6 +68,7 @@ export default function App() {
               <AdminPage />
             </AdminRoute>
           }
+          errorElement={<ErrorFallback />}
         />
         <Route
           path="/dashboard"
@@ -65,6 +77,7 @@ export default function App() {
               <DashboardAdmin />
             </AdminRoute>
           }
+          errorElement={<ErrorFallback />}
         />
         <Route
           path="/clienti"
@@ -73,6 +86,7 @@ export default function App() {
               <ClientiPage />
             </AdminRoute>
           }
+          errorElement={<ErrorFallback />}
         />
         <Route
           path="/categorie"
@@ -81,6 +95,7 @@ export default function App() {
               <CategoriePage />
             </AdminRoute>
           }
+          errorElement={<ErrorFallback />}
         />
 
         {/* Catch all */}
