@@ -60,7 +60,7 @@ export default function LoginPage() {
       >
         <Flex justify="center" mb={4}>
           <Image
-            src="/servizinet_logo.jpg" // 👉 deve stare in /public
+            src="/servizinet_logo.png" // 👉 deve stare in /public
             alt="ServiziNet Logo"
             boxSize={logoSize}
           />
