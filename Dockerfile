@@ -5,8 +5,8 @@ WORKDIR /app
 # Copia i file di definizione delle dipendenze
 COPY package*.json ./
 
-# ⚡ Forza installazione pulita
-RUN rm -rf node_modules && npm cache clean --force && npm install
+# ⚡ Forza installazione pulita e mostra versione Chakra
+RUN rm -rf node_modules && npm cache clean --force && npm install && npm ls @chakra-ui/react
 
 # Copia il resto del codice
 COPY . .
@@ -21,7 +21,7 @@ ENV NODE_ENV=production
 
 # Copia solo i pacchetti necessari
 COPY --from=build /app/package*.json ./
-RUN rm -rf node_modules && npm cache clean --force && npm install --omit=dev
+RUN rm -rf node_modules && npm cache clean --force && npm install --omit=dev && npm ls @chakra-ui/react
 
 # Copia i file buildati
 COPY --from=build /app/dist ./dist
