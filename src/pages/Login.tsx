@@ -21,7 +21,6 @@ export default function LoginPage() {
   const nav = useNavigate();
   const toast = useToast();
 
-  const logoSize = useBreakpointValue({ base: "70px", md: "120px" });
   const boxPadding = useBreakpointValue({ base: 6, md: 8 });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -58,16 +57,13 @@ export default function LoginPage() {
         bg="white"
         shadow="lg"
       >
-        <Flex justify="center" mb={4}>
+        <Flex justify="center" mb={6}>
           <Image
-            src="/servizinet_logo.png" // 👉 deve stare in /public
+            src="/servizinet_logo.png" // ✅ deve stare in /public
             alt="ServiziNet Logo"
-            boxSize={logoSize}
+            boxSize={{ base: "100px", md: "150px" }}
           />
         </Flex>
-        <Heading size="lg" textAlign="center" mb={2}>
-          SERVIZI.NET
-        </Heading>
         <Heading size="sm" textAlign="center" color="gray.500" mb={6}>
           Portale Segnalazioni Sale
         </Heading>
@@ -96,7 +92,7 @@ export default function LoginPage() {
             </FormControl>
             <Button
               type="submit"
-              colorScheme="blue"
+              colorScheme="brand" // 👉 usa il colore personalizzato del tema
               w="full"
               size={useBreakpointValue({ base: "sm", md: "md" })}
             >
