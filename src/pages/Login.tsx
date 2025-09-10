@@ -9,9 +9,9 @@ import {
   Stack,
   Heading,
   Image,
-  useToast,
   useBreakpointValue,
 } from "@chakra-ui/react";
+import { useToast } from "@chakra-ui/toast"; // 🔧 compatibile anche con Chakra v2
 import { useNavigate } from "react-router-dom";
 import { login } from "../api";
 
@@ -50,62 +50,3 @@ export default function LoginPage() {
 
   return (
     <Flex minH="100vh" align="center" justify="center" bg="gray.50" px={4}>
-      <Box
-        w="full"
-        maxW="md"
-        p={boxPadding}
-        borderWidth={1}
-        borderRadius="lg"
-        bg="white"
-        shadow="lg"
-      >
-        <Flex justify="center" mb={4}>
-          <Image
-            src="/servizinet_logo.jpg" // 👉 deve stare in /public
-            alt="ServiziNet Logo"
-            boxSize={logoSize}
-          />
-        </Flex>
-        <Heading size="lg" textAlign="center" mb={2}>
-          SERVIZI.NET
-        </Heading>
-        <Heading size="sm" textAlign="center" color="gray.500" mb={6}>
-          Portale Segnalazioni Sale
-        </Heading>
-
-        <form onSubmit={handleSubmit}>
-          <Stack spacing={4}>
-            <FormControl id="email" isRequired>
-              <FormLabel>Email</FormLabel>
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Inserisci la tua email"
-                size={useBreakpointValue({ base: "sm", md: "md" })}
-              />
-            </FormControl>
-            <FormControl id="password" isRequired>
-              <FormLabel>Password</FormLabel>
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Inserisci la password"
-                size={useBreakpointValue({ base: "sm", md: "md" })}
-              />
-            </FormControl>
-            <Button
-              type="submit"
-              colorScheme="blue"
-              w="full"
-              size={useBreakpointValue({ base: "sm", md: "md" })}
-            >
-              Accedi
-            </Button>
-          </Stack>
-        </form>
-      </Box>
-    </Flex>
-  );
-}
