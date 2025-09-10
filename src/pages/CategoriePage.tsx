@@ -1,9 +1,32 @@
 import React, { useEffect, useState } from "react";
 import {
-  getCategorie,
-  createCategoria,
-  deleteCategoria,
-} from "../api";
+  Box,
+  Flex,
+  Heading,
+  Button,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  useToast,
+  HStack,
+  IconButton,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  ModalCloseButton,
+  FormControl,
+  FormLabel,
+  Input,
+  useDisclosure,
+} from "@chakra-ui/react";
+import { AddIcon, EditIcon, DeleteIcon } from "@chakra-ui/icons";
+import { useAuth } from "../hooks/useAuth";
 
 type Categoria = {
   id: number;
@@ -11,63 +34,164 @@ type Categoria = {
 };
 
 export default function CategoriePage() {
-  const [rows, setRows] = useState<Categoria[]>([]);
-  const [msg, setMsg] = useState<string | null>(null);
+  const { token } = useAuth();
+  const [categorie, setCategorie] = useState<Categoria[]>([]);
+  const [selected, setSelected] = useState<Categoria | null>(null);
+  const [nome, setNome] = useState("");
+  const toast = useToast();
 
-  async function load() {
+  const { isOpen, onOpen, onClose } = useDisclosure();
+
+  const loadCategorie = async () => {
     try {
-      const data = await getCategorie();
-      setRows(data);
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/categorie`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setCategorie(data);
     } catch {
-      setMsg("Errore nel caricamento categorie");
+      toast({ title: "Errore caricamento categorie", status: "error" });
     }
-  }
+  };
 
   useEffect(() => {
-    load();
+    loadCategorie();
   }, []);
 
-  async function handleAdd() {
+  const handleSave = async () => {
     try {
-      await createCategoria("Nuova Categoria");
-      load();
-    } catch {
-      setMsg("Errore nella creazione categoria");
-    }
-  }
+      const method = selected ? "PUT" : "POST";
+      const url = selected
+        ? `${import.meta.env.VITE_API_BASE_URL}/categorie/${selected.id}`
+        : `${import.meta.env.VITE_API_BASE_URL}/categorie`;
 
-  async function handleDelete(id: number) {
-    try {
-      await deleteCategoria(id);
-      load();
+      const res = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ nome_categoria: nome }),
+      });
+
+      if (!res.ok) throw new Error("Errore salvataggio");
+
+      toast({
+        title: selected ? "Categoria aggiornata" : "Categoria creata",
+        status: "success",
+      });
+      onClose();
+      setSelected(null);
+      setNome("");
+      loadCategorie();
     } catch {
-      setMsg("Errore nell'eliminazione categoria");
+      toast({ title: "Errore salvataggio", status: "error" });
     }
-  }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("Vuoi davvero eliminare questa categoria?")) return;
+    try {
+      await fetch(`${import.meta.env.VITE_API_BASE_URL}/categorie/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      toast({ title: "Categoria eliminata", status: "info" });
+      loadCategorie();
+    } catch {
+      toast({ title: "Errore eliminazione", status: "error" });
+    }
+  };
+
+  const openModal = (categoria?: Categoria) => {
+    if (categoria) {
+      setSelected(categoria);
+      setNome(categoria.nome_categoria);
+    } else {
+      setSelected(null);
+      setNome("");
+    }
+    onOpen();
+  };
 
   return (
-    <div className="p-6">
-      <h1 className="text-xl font-bold mb-4">Categorie</h1>
-      {msg && <p>{msg}</p>}
-      <button
-        onClick={handleAdd}
-        className="mb-4 px-4 py-2 bg-blue-600 text-white rounded"
-      >
-        Aggiungi Categoria
-      </button>
-      <ul>
-        {rows.map((c) => (
-          <li key={c.id}>
-            {c.nome_categoria}
-            <button
-              onClick={() => handleDelete(c.id)}
-              className="ml-2 px-2 py-1 bg-red-600 text-white rounded"
-            >
-              Elimina
-            </button>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <Flex minH="100vh" bg="gray.50" direction="column" p={8}>
+      <Heading mb={6}>🗂️ Gestione Categorie</Heading>
+
+      <Box bg="white" p={6} borderRadius="lg" shadow="md">
+        <HStack justify="flex-end" mb={4}>
+          <Button
+            leftIcon={<AddIcon />}
+            colorScheme="purple"
+            onClick={() => openModal()}
+          >
+            Aggiungi Categoria
+          </Button>
+        </HStack>
+
+        <Table>
+          <Thead>
+            <Tr>
+              <Th>ID</Th>
+              <Th>Nome Categoria</Th>
+              <Th>Azioni</Th>
+            </Tr>
+          </Thead>
+          <Tbody>
+            {categorie.map((c) => (
+              <Tr key={c.id}>
+                <Td>{c.id}</Td>
+                <Td>{c.nome_categoria}</Td>
+                <Td>
+                  <HStack>
+                    <IconButton
+                      aria-label="Modifica"
+                      icon={<EditIcon />}
+                      size="sm"
+                      onClick={() => openModal(c)}
+                    />
+                    <IconButton
+                      aria-label="Elimina"
+                      icon={<DeleteIcon />}
+                      size="sm"
+                      colorScheme="red"
+                      onClick={() => handleDelete(c.id)}
+                    />
+                  </HStack>
+                </Td>
+              </Tr>
+            ))}
+          </Tbody>
+        </Table>
+      </Box>
+
+      {/* Modale Aggiungi/Modifica Categoria */}
+      <Modal isOpen={isOpen} onClose={onClose}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>
+            {selected ? "Modifica Categoria" : "Nuova Categoria"}
+          </ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <FormControl mb={3}>
+              <FormLabel>Nome Categoria</FormLabel>
+              <Input
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+              />
+            </FormControl>
+          </ModalBody>
+          <ModalFooter>
+            <Button colorScheme="blue" mr={3} onClick={handleSave}>
+              Salva
+            </Button>
+            <Button variant="ghost" onClick={onClose}>
+              Annulla
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    </Flex>
   );
 }
