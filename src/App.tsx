@@ -8,19 +8,7 @@ import AdminPage from "./pages/AdminPage";
 import DashboardAdmin from "./pages/DashboardAdmin";
 import ClientiPage from "./pages/ClientiPage";
 import CategoriePage from "./pages/CategoriePage";
-
-// Pagina di errore semplice
-function ErrorPage() {
-  return (
-    <div style={{ padding: "2rem", textAlign: "center" }}>
-      <h2>⚠️ Errore di applicazione</h2>
-      <p>Qualcosa è andato storto. Riprova oppure torna alla home.</p>
-      <a href="/" style={{ color: "blue", textDecoration: "underline" }}>
-        Vai alla Home
-      </a>
-    </div>
-  );
-}
+import ErrorPage from "./pages/ErrorPage"; // 👉 nuova pagina di errore
 
 // Protected route semplice
 function ProtectedRoute({ children }: { children: JSX.Element }) {
