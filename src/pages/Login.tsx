@@ -9,9 +9,9 @@ import {
   Stack,
   Heading,
   Image,
+  useToast,
   useBreakpointValue,
 } from "@chakra-ui/react";
-import { useToast } from "@chakra-ui/toast"; // 🔧 compatibile con Chakra v2
 import { useNavigate } from "react-router-dom";
 import { login } from "../api";
 
