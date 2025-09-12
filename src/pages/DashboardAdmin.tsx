@@ -1,225 +1,254 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
-  Box, Heading, SimpleGrid, Stat, StatLabel, StatNumber,
-  Table, Thead, Tr, Th, Tbody, Td, Button, Select, Input
+  Box,
+  Flex,
+  Heading,
+  Text,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  Button,
+  HStack,
+  Select,
+  Input,
+  useToast,
 } from "@chakra-ui/react";
-import jsPDF from "jspdf";
-import { api } from "../api";
+import { useAuth } from "../hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 
-// ---- Tipi minimi, non tocco il tuo styling ----
 type Segnalazione = {
   id: number;
-  data: string;       // formato gg/mm/aaaa o ISO, la mostri come stringa
-  ora: string;        // hh:mm
-  categoria?: string; // arriva dalla JOIN
-  sala?: string;      // arriva dalla JOIN
-  descrizione?: string;
-  cliente_id?: number;
-  categoria_id?: number;
+  data: string;
+  ora: string;
+  descrizione: string;
+  nome_categoria?: string;
+  nome_sala?: string;
 };
 
-// Normalizza qualunque risposta in un array ([], {rows:[]}, null, 304 ecc.)
-function ensureArray<T = any>(raw: any): T[] {
-  if (Array.isArray(raw)) return raw as T[];
-  if (raw && Array.isArray(raw.rows)) return raw.rows as T[];
-  // alcune fetch possono restituire {data: [...]} se avete usato axios direttamente
-  if (raw && Array.isArray(raw.data)) return raw.data as T[];
-  return [];
-}
-
-// CSV semplice senza librerie
-function toCSV(headers: string[], rows: (string | number)[][]): string {
-  const esc = (v: any) => {
-    const s = v == null ? "" : String(v);
-    // doppie virgolette raddoppiate e campo tra doppi apici
-    return `"${s.replace(/"/g, '""')}"`;
-  };
-  return [headers, ...rows].map(r => r.map(esc).join(",")).join("\n");
-}
+type Categoria = { id: number; nome_categoria: string };
+type Cliente = { id: number; nome_sala: string };
 
 export default function DashboardAdmin() {
+  const { token } = useAuth();
   const [segnalazioni, setSegnalazioni] = useState<Segnalazione[]>([]);
-  const [clienti, setClienti] = useState<any[]>([]);
-  const [categorie, setCategorie] = useState<any[]>([]);
+  const [categorie, setCategorie] = useState<Categoria[]>([]);
+  const [clienti, setClienti] = useState<Cliente[]>([]);
   const [utenti, setUtenti] = useState<any[]>([]);
+  const [filtroData, setFiltroData] = useState("");
+  const [filtroCategoria, setFiltroCategoria] = useState("");
+  const [filtroCliente, setFiltroCliente] = useState("");
+  const toast = useToast();
+  const nav = useNavigate();
 
-  // filtri (lasciati base: adegua ai tuoi controlli esistenti se servisse)
-  const [filtroData, setFiltroData] = useState<string>("");
-  const [filtroCategoria, setFiltroCategoria] = useState<string>("");
-  const [filtroCliente, setFiltroCliente] = useState<string>("");
+  // Carica dati
+  const loadData = async () => {
+    try {
+      const [segRes, catRes, cliRes, uteRes] = await Promise.all([
+        fetch(`${import.meta.env.VITE_API_BASE_URL}/segnalazioni`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${import.meta.env.VITE_API_BASE_URL}/categorie`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${import.meta.env.VITE_API_BASE_URL}/clienti`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${import.meta.env.VITE_API_BASE_URL}/utenti`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        // NB: tutte le fetch sono normalizzate per evitare l’errore .map
-        const segRaw = (await api.get("/segnalazioni")).data;
-        setSegnalazioni(ensureArray<Segnalazione>(segRaw));
-
-        const cliRaw = (await api.get("/clienti")).data;
-        setClienti(ensureArray<any>(cliRaw));
-
-        const catRaw = (await api.get("/categorie")).data;
-        setCategorie(ensureArray<any>(catRaw));
-
-        const uteRaw = (await api.get("/utenti")).data;
-        setUtenti(ensureArray<any>(uteRaw));
-      } catch (e) {
-        console.error("Errore caricamento dashboard:", e);
-        // In caso di errore metto comunque array vuoti per non rompere il render
-        setSegnalazioni([]);
-        setClienti([]);
-        setCategorie([]);
-        setUtenti([]);
-      }
-    })();
-  }, []);
-
-  // Applico i filtri senza toccare la sorgente
-  const segnalazioniFiltrate = useMemo(() => {
-    return segnalazioni
-      .filter(s => (filtroData ? (s.data ?? "").includes(filtroData) : true))
-      .filter(s => (filtroCategoria ? (s.categoria ?? "") === filtroCategoria : true))
-      .filter(s => (filtroCliente ? (s.sala ?? "") === filtroCliente : true));
-  }, [segnalazioni, filtroData, filtroCategoria, filtroCliente]);
-
-  // Esporta CSV
-  const exportCSV = () => {
-    const headers = ["ID", "DATA", "ORA", "CATEGORIA", "SALA", "DESCRIZIONE"];
-    const rows = segnalazioniFiltrate.map(s => [
-      s.id, s.data ?? "", s.ora ?? "", s.categoria ?? "", s.sala ?? "", s.descrizione ?? ""
-    ]);
-    const csv = toCSV(headers, rows);
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "segnalazioni.csv";
-    a.click();
-    URL.revokeObjectURL(url);
+      setSegnalazioni(await segRes.json());
+      setCategorie(await catRes.json());
+      setClienti(await cliRes.json());
+      setUtenti(await uteRes.json());
+    } catch {
+      toast({ title: "Errore caricamento dati", status: "error" });
+    }
   };
 
-  // Esporta PDF con sola libreria jspdf (niente autotable)
-  const exportPDF = () => {
-    const doc = new jsPDF({ unit: "pt", format: "a4" });
-    const marginX = 40;
-    let y = 50;
+  useEffect(() => {
+    loadData();
+  }, []);
 
-    doc.setFontSize(16);
-    doc.text("Segnalazioni", marginX, y);
-    y += 20;
+  // Filtro segnalazioni
+  const segnalazioniFiltrate = segnalazioni.filter((s) => {
+    const dataMatch = filtroData ? s.data.startsWith(filtroData) : true;
+    const catMatch = filtroCategoria
+      ? s.nome_categoria === filtroCategoria
+      : true;
+    const cliMatch = filtroCliente ? s.nome_sala === filtroCliente : true;
+    return dataMatch && catMatch && cliMatch;
+  });
 
-    doc.setFontSize(10);
-    // header
-    doc.text("ID", marginX + 0, y);
-    doc.text("Data", marginX + 40, y);
-    doc.text("Ora", marginX + 110, y);
-    doc.text("Categoria", marginX + 160, y);
-    doc.text("Sala", marginX + 300, y);
-    doc.text("Descrizione", marginX + 380, y);
-    y += 14;
+  // Esporta CSV
+  const esportaCSV = () => {
+    const header = ["ID", "Data", "Ora", "Categoria", "Sala", "Descrizione"];
+    const rows = segnalazioniFiltrate.map((s) => [
+      s.id,
+      new Date(s.data).toLocaleDateString("it-IT"),
+      s.ora,
+      s.nome_categoria || "",
+      s.nome_sala || "",
+      s.descrizione || "",
+    ]);
+    const csvContent =
+      "data:text/csv;charset=utf-8," +
+      [header, ...rows].map((e) => e.join(";")).join("\n");
 
-    segnalazioniFiltrate.forEach((s) => {
-      // semplice wrap manuale della descrizione
-      const desc = (s.descrizione ?? "").replace(/\s+/g, " ");
-      const chunk = desc.length > 70 ? desc.slice(0, 70) + "…" : desc;
+    const link = document.createElement("a");
+    link.setAttribute("href", encodeURI(csvContent));
+    link.setAttribute("download", "segnalazioni.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
-      if (y > 780) { doc.addPage(); y = 50; }
-      doc.text(String(s.id ?? ""), marginX + 0, y);
-      doc.text(String(s.data ?? ""), marginX + 40, y);
-      doc.text(String(s.ora ?? ""), marginX + 110, y);
-      doc.text(String(s.categoria ?? ""), marginX + 160, y);
-      doc.text(String(s.sala ?? ""), marginX + 300, y);
-      doc.text(chunk, marginX + 380, y);
-      y += 14;
-    });
-
-    doc.save("segnalazioni.pdf");
+  // Esporta PDF
+  const esportaPDF = () => {
+    const printContent = `
+      <h2>Segnalazioni</h2>
+      <table border="1" cellspacing="0" cellpadding="4">
+        <thead>
+          <tr>
+            <th>ID</th><th>Data</th><th>Ora</th>
+            <th>Categoria</th><th>Sala</th><th>Descrizione</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${segnalazioniFiltrate
+            .map(
+              (s) => `
+            <tr>
+              <td>${s.id}</td>
+              <td>${new Date(s.data).toLocaleDateString("it-IT")}</td>
+              <td>${s.ora}</td>
+              <td>${s.nome_categoria || ""}</td>
+              <td>${s.nome_sala || ""}</td>
+              <td>${s.descrizione || ""}</td>
+            </tr>`
+            )
+            .join("")}
+        </tbody>
+      </table>
+    `;
+    const newWin = window.open("", "_blank");
+    newWin!.document.write(printContent);
+    newWin!.print();
+    newWin!.close();
   };
 
   return (
-    <Box p={6}>
-      <Heading mb={6}>Dashboard Amministratore</Heading>
+    <Flex minH="100vh" bg="gray.50" direction="column" p={8}>
+      <Heading mb={6}>📊 Dashboard Amministratore</Heading>
 
-      {/* Stat cards – lasciamo i numeri come prima */}
-      <SimpleGrid columns={{ base: 2, md: 4 }} spacing={4} mb={6}>
-        <Stat p={4} borderWidth="1px" rounded="md">
-          <StatLabel>Segnalazioni Totali</StatLabel>
-          <StatNumber>{segnalazioni.length}</StatNumber>
-        </Stat>
-        <Stat p={4} borderWidth="1px" rounded="md">
-          <StatLabel>Clienti</StatLabel>
-          <StatNumber>{clienti.length}</StatNumber>
-        </Stat>
-        <Stat p={4} borderWidth="1px" rounded="md">
-          <StatLabel>Categorie</StatLabel>
-          <StatNumber>{categorie.length}</StatNumber>
-        </Stat>
-        <Stat p={4} borderWidth="1px" rounded="md">
-          <StatLabel>Utenti</StatLabel>
-          <StatNumber>{utenti.length}</StatNumber>
-        </Stat>
-      </SimpleGrid>
+      {/* KPI */}
+      <HStack spacing={6} mb={6}>
+        <Box p={6} bg="white" borderRadius="lg" shadow="md" textAlign="center">
+          <Text fontSize="sm">📊 Segnalazioni Totali</Text>
+          <Heading size="lg">{segnalazioni.length}</Heading>
+        </Box>
+        <Box p={6} bg="white" borderRadius="lg" shadow="md" textAlign="center">
+          <Text fontSize="sm">🏢 Clienti</Text>
+          <Heading size="lg">{clienti.length}</Heading>
+        </Box>
+        <Box p={6} bg="white" borderRadius="lg" shadow="md" textAlign="center">
+          <Text fontSize="sm">🗂️ Categorie</Text>
+          <Heading size="lg">{categorie.length}</Heading>
+        </Box>
+        <Box p={6} bg="white" borderRadius="lg" shadow="md" textAlign="center">
+          <Text fontSize="sm">👥 Utenti</Text>
+          <Heading size="lg">{utenti.length}</Heading>
+        </Box>
+      </HStack>
 
-      {/* Filtri – non cambio UX: data, categoria, cliente */}
-      <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4} mb={4}>
+      {/* Filtri */}
+      <HStack mb={4} spacing={4}>
         <Input
-          placeholder="gg/mm/aaaa"
+          type="date"
           value={filtroData}
           onChange={(e) => setFiltroData(e.target.value)}
         />
         <Select
+          placeholder="Tutte le categorie"
           value={filtroCategoria}
           onChange={(e) => setFiltroCategoria(e.target.value)}
         >
-          <option value="">Tutte le categorie</option>
-          {ensureArray<any>(categorie).map((c: any) => (
-            <option key={c.id} value={c.nome_categoria}>{c.nome_categoria}</option>
+          {categorie.map((c) => (
+            <option key={c.id} value={c.nome_categoria}>
+              {c.nome_categoria}
+            </option>
           ))}
         </Select>
         <Select
+          placeholder="Tutti i clienti"
           value={filtroCliente}
           onChange={(e) => setFiltroCliente(e.target.value)}
         >
-          <option value="">Tutti i clienti</option>
-          {ensureArray<any>(clienti).map((cl: any) => (
-            <option key={cl.id} value={cl.nome_sala}>{cl.nome_sala}</option>
+          {clienti.map((c) => (
+            <option key={c.id} value={c.nome_sala}>
+              {c.nome_sala}
+            </option>
           ))}
         </Select>
-      </SimpleGrid>
+        <Button onClick={() => {setFiltroData(""); setFiltroCategoria(""); setFiltroCliente("");}}>
+          Reset Filtri
+        </Button>
+      </HStack>
 
-      <Table size="sm" variant="simple">
-        <Thead>
-          <Tr>
-            <Th>ID</Th>
-            <Th>DATA</Th>
-            <Th>ORA</Th>
-            <Th>CATEGORIA</Th>
-            <Th>SALA</Th>
-            <Th>DESCRIZIONE</Th>
-          </Tr>
-        </Thead>
-        <Tbody>
-          {segnalazioniFiltrate.map((s) => (
-            <Tr key={s.id}>
-              <Td>{s.id}</Td>
-              <Td>{s.data}</Td>
-              <Td>{s.ora}</Td>
-              <Td>{s.categoria ?? ""}</Td>
-              <Td>{s.sala ?? ""}</Td>
-              <Td>{s.descrizione}</Td>
+      {/* Tabella segnalazioni */}
+      <Box bg="white" p={6} borderRadius="lg" shadow="md">
+        <Table>
+          <Thead>
+            <Tr>
+              <Th>ID</Th>
+              <Th>Data</Th>
+              <Th>Ora</Th>
+              <Th>Categoria</Th>
+              <Th>Sala</Th>
+              <Th>Descrizione</Th>
             </Tr>
-          ))}
-        </Tbody>
-      </Table>
-
-      <Box mt={6} display="flex" gap={3} flexWrap="wrap">
-        <Button colorScheme="green" onClick={exportCSV}>Esporta CSV</Button>
-        <Button colorScheme="blue" onClick={exportPDF}>Esporta PDF</Button>
-        {/* I tuoi tre bottoni esistenti restano qui */}
-        {/* <Button>Gestione Utenti</Button>
-            <Button>Gestione Categorie</Button>
-            <Button>Gestione Clienti</Button> */}
+          </Thead>
+          <Tbody>
+            {segnalazioniFiltrate.map((s) => (
+              <Tr key={s.id}>
+                <Td>{s.id}</Td>
+                <Td>{new Date(s.data).toLocaleDateString("it-IT")}</Td>
+                <Td>{s.ora}</Td>
+                <Td>{s.nome_categoria}</Td>
+                <Td>{s.nome_sala}</Td>
+                <Td>{s.descrizione}</Td>
+              </Tr>
+            ))}
+          </Tbody>
+        </Table>
       </Box>
-    </Box>
+
+      {/* Bottoni Export */}
+      <HStack spacing={6} justify="center" mt={4}>
+        <Button colorScheme="green" onClick={esportaCSV}>
+          ⬇️ Esporta CSV
+        </Button>
+        <Button colorScheme="blue" onClick={esportaPDF}>
+          ⬇️ Esporta PDF
+        </Button>
+      </HStack>
+
+      {/* Navigazione alle gestioni */}
+      <HStack spacing={4} justify="center" mt={6}>
+        <Button colorScheme="blue" onClick={() => nav("/utenti")}>
+          👥 Gestione Utenti
+        </Button>
+        <Button colorScheme="purple" onClick={() => nav("/categorie")}>
+          🗂️ Gestione Categorie
+        </Button>
+        <Button colorScheme="teal" onClick={() => nav("/clienti")}>
+          🏢 Gestione Clienti
+        </Button>
+      </HStack>
+    </Flex>
   );
 }
