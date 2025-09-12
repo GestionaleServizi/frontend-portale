@@ -23,7 +23,6 @@
     "axios": "^1.7.7",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.8.2",
-    "papaparse": "^5.4.1",
     "framer-motion": "11.0.0"
   },
   "devDependencies": {
@@ -32,7 +31,6 @@
     "@vitejs/plugin-react": "4.3.1",
     "typescript": "5.6.2",
     "@types/jspdf": "^2.0.0",
-    "@types/papaparse": "^5.3.7",
-    "vite": "5.4.8"
+     "vite": "5.4.8"
   }
 }
