@@ -24,8 +24,8 @@ type Segnalazione = {
   data: string;
   ora: string;
   descrizione: string;
-  nome_categoria?: string;
-  nome_sala?: string;
+  categoria?: string;   // ← aggiornato
+  sala?: string;        // ← aggiornato
 };
 
 type Categoria = { id: number; nome_categoria: string };
@@ -77,10 +77,8 @@ export default function DashboardAdmin() {
   // Filtro segnalazioni
   const segnalazioniFiltrate = segnalazioni.filter((s) => {
     const dataMatch = filtroData ? s.data.startsWith(filtroData) : true;
-    const catMatch = filtroCategoria
-      ? s.nome_categoria === filtroCategoria
-      : true;
-    const cliMatch = filtroCliente ? s.nome_sala === filtroCliente : true;
+    const catMatch = filtroCategoria ? s.categoria === filtroCategoria : true;
+    const cliMatch = filtroCliente ? s.sala === filtroCliente : true;
     return dataMatch && catMatch && cliMatch;
   });
 
@@ -91,8 +89,8 @@ export default function DashboardAdmin() {
       s.id,
       new Date(s.data).toLocaleDateString("it-IT"),
       s.ora,
-      s.nome_categoria || "",
-      s.nome_sala || "",
+      s.categoria || "",
+      s.sala || "",
       s.descrizione || "",
     ]);
     const csvContent =
@@ -126,8 +124,8 @@ export default function DashboardAdmin() {
               <td>${s.id}</td>
               <td>${new Date(s.data).toLocaleDateString("it-IT")}</td>
               <td>${s.ora}</td>
-              <td>${s.nome_categoria || ""}</td>
-              <td>${s.nome_sala || ""}</td>
+              <td>${s.categoria || ""}</td>
+              <td>${s.sala || ""}</td>
               <td>${s.descrizione || ""}</td>
             </tr>`
             )
@@ -194,7 +192,13 @@ export default function DashboardAdmin() {
             </option>
           ))}
         </Select>
-        <Button onClick={() => {setFiltroData(""); setFiltroCategoria(""); setFiltroCliente("");}}>
+        <Button
+          onClick={() => {
+            setFiltroData("");
+            setFiltroCategoria("");
+            setFiltroCliente("");
+          }}
+        >
           Reset Filtri
         </Button>
       </HStack>
@@ -218,8 +222,8 @@ export default function DashboardAdmin() {
                 <Td>{s.id}</Td>
                 <Td>{new Date(s.data).toLocaleDateString("it-IT")}</Td>
                 <Td>{s.ora}</Td>
-                <Td>{s.nome_categoria}</Td>
-                <Td>{s.nome_sala}</Td>
+                <Td>{s.categoria}</Td>
+                <Td>{s.sala}</Td>
                 <Td>{s.descrizione}</Td>
               </Tr>
             ))}
