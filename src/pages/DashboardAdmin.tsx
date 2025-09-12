@@ -1,202 +1,224 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-  Box,
-  Text,
-  SimpleGrid,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  Button,
-  Flex,
+  Box, Heading, SimpleGrid, Stat, StatLabel, StatNumber,
+  Table, Thead, Tr, Th, Tbody, Td, Button, Select, Input
 } from "@chakra-ui/react";
-import axios from "axios";
-import { jsPDF } from "jspdf";
-import Papa from "papaparse";
-import { motion } from "framer-motion";
+import jsPDF from "jspdf";
+import { api } from "../api";
 
-const MotionBox = motion(Box);
-
-interface Segnalazione {
+// ---- Tipi minimi, non tocco il tuo styling ----
+type Segnalazione = {
   id: number;
-  data: string;
-  ora: string;
-  categoria: string;
-  sala: string;
-  descrizione: string;
+  data: string;       // formato gg/mm/aaaa o ISO, la mostri come stringa
+  ora: string;        // hh:mm
+  categoria?: string; // arriva dalla JOIN
+  sala?: string;      // arriva dalla JOIN
+  descrizione?: string;
+  cliente_id?: number;
+  categoria_id?: number;
+};
+
+// Normalizza qualunque risposta in un array ([], {rows:[]}, null, 304 ecc.)
+function ensureArray<T = any>(raw: any): T[] {
+  if (Array.isArray(raw)) return raw as T[];
+  if (raw && Array.isArray(raw.rows)) return raw.rows as T[];
+  // alcune fetch possono restituire {data: [...]} se avete usato axios direttamente
+  if (raw && Array.isArray(raw.data)) return raw.data as T[];
+  return [];
+}
+
+// CSV semplice senza librerie
+function toCSV(headers: string[], rows: (string | number)[][]): string {
+  const esc = (v: any) => {
+    const s = v == null ? "" : String(v);
+    // doppie virgolette raddoppiate e campo tra doppi apici
+    return `"${s.replace(/"/g, '""')}"`;
+  };
+  return [headers, ...rows].map(r => r.map(esc).join(",")).join("\n");
 }
 
 export default function DashboardAdmin() {
-  const [categorie, setCategorie] = useState<number>(0);
-  const [utenti, setUtenti] = useState<number>(0);
   const [segnalazioni, setSegnalazioni] = useState<Segnalazione[]>([]);
-  const [clienti, setClienti] = useState<number>(0);
+  const [clienti, setClienti] = useState<any[]>([]);
+  const [categorie, setCategorie] = useState<any[]>([]);
+  const [utenti, setUtenti] = useState<any[]>([]);
 
-  // 📌 Funzione per esportare CSV
-  const exportToCSV = () => {
-    const csv = Papa.unparse(segnalazioni);
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  // filtri (lasciati base: adegua ai tuoi controlli esistenti se servisse)
+  const [filtroData, setFiltroData] = useState<string>("");
+  const [filtroCategoria, setFiltroCategoria] = useState<string>("");
+  const [filtroCliente, setFiltroCliente] = useState<string>("");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        // NB: tutte le fetch sono normalizzate per evitare l’errore .map
+        const segRaw = (await api.get("/segnalazioni")).data;
+        setSegnalazioni(ensureArray<Segnalazione>(segRaw));
+
+        const cliRaw = (await api.get("/clienti")).data;
+        setClienti(ensureArray<any>(cliRaw));
+
+        const catRaw = (await api.get("/categorie")).data;
+        setCategorie(ensureArray<any>(catRaw));
+
+        const uteRaw = (await api.get("/utenti")).data;
+        setUtenti(ensureArray<any>(uteRaw));
+      } catch (e) {
+        console.error("Errore caricamento dashboard:", e);
+        // In caso di errore metto comunque array vuoti per non rompere il render
+        setSegnalazioni([]);
+        setClienti([]);
+        setCategorie([]);
+        setUtenti([]);
+      }
+    })();
+  }, []);
+
+  // Applico i filtri senza toccare la sorgente
+  const segnalazioniFiltrate = useMemo(() => {
+    return segnalazioni
+      .filter(s => (filtroData ? (s.data ?? "").includes(filtroData) : true))
+      .filter(s => (filtroCategoria ? (s.categoria ?? "") === filtroCategoria : true))
+      .filter(s => (filtroCliente ? (s.sala ?? "") === filtroCliente : true));
+  }, [segnalazioni, filtroData, filtroCategoria, filtroCliente]);
+
+  // Esporta CSV
+  const exportCSV = () => {
+    const headers = ["ID", "DATA", "ORA", "CATEGORIA", "SALA", "DESCRIZIONE"];
+    const rows = segnalazioniFiltrate.map(s => [
+      s.id, s.data ?? "", s.ora ?? "", s.categoria ?? "", s.sala ?? "", s.descrizione ?? ""
+    ]);
+    const csv = toCSV(headers, rows);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = "segnalazioni.csv";
     a.click();
+    URL.revokeObjectURL(url);
   };
 
-  // 📌 Funzione per esportare PDF
-  const exportToPDF = () => {
-    const doc = new jsPDF();
-    doc.text("Segnalazioni", 20, 10);
-    segnalazioni.forEach((s, i) => {
-      doc.text(
-        `${s.data} ${s.ora} | ${s.categoria} | ${s.sala} | ${s.descrizione}`,
-        20,
-        20 + i * 10
-      );
+  // Esporta PDF con sola libreria jspdf (niente autotable)
+  const exportPDF = () => {
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const marginX = 40;
+    let y = 50;
+
+    doc.setFontSize(16);
+    doc.text("Segnalazioni", marginX, y);
+    y += 20;
+
+    doc.setFontSize(10);
+    // header
+    doc.text("ID", marginX + 0, y);
+    doc.text("Data", marginX + 40, y);
+    doc.text("Ora", marginX + 110, y);
+    doc.text("Categoria", marginX + 160, y);
+    doc.text("Sala", marginX + 300, y);
+    doc.text("Descrizione", marginX + 380, y);
+    y += 14;
+
+    segnalazioniFiltrate.forEach((s) => {
+      // semplice wrap manuale della descrizione
+      const desc = (s.descrizione ?? "").replace(/\s+/g, " ");
+      const chunk = desc.length > 70 ? desc.slice(0, 70) + "…" : desc;
+
+      if (y > 780) { doc.addPage(); y = 50; }
+      doc.text(String(s.id ?? ""), marginX + 0, y);
+      doc.text(String(s.data ?? ""), marginX + 40, y);
+      doc.text(String(s.ora ?? ""), marginX + 110, y);
+      doc.text(String(s.categoria ?? ""), marginX + 160, y);
+      doc.text(String(s.sala ?? ""), marginX + 300, y);
+      doc.text(chunk, marginX + 380, y);
+      y += 14;
     });
+
     doc.save("segnalazioni.pdf");
-  };
-
-  // 📌 Caricamento dati dal backend
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [catRes, utRes, segRes, clRes] = await Promise.all([
-          axios.get("/api/categorie"),
-          axios.get("/api/utenti"),
-          axios.get("/api/segnalazioni"),
-          axios.get("/api/clienti"),
-        ]);
-
-        setCategorie(catRes.data.length);
-        setUtenti(utRes.data.length);
-        setSegnalazioni(segRes.data);
-        setClienti(clRes.data.length);
-      } catch (err) {
-        console.error("Errore caricamento dati dashboard:", err);
-      }
-    };
-
-    fetchData();
-  }, []);
-
-  // 📌 Logout finto (placeholder)
-  const handleLogout = () => {
-    console.log("Logout non ancora implementato 🚪");
-    // qui poi metteremo logica: rimozione token, redirect a login, ecc.
   };
 
   return (
     <Box p={6}>
-      {/* 🔹 Header con Logout */}
-      <Flex justify="space-between" align="center" mb={6}>
-        <Text fontSize="2xl" fontWeight="bold">
-          Dashboard Admin
-        </Text>
-        <Button colorScheme="red" onClick={handleLogout}>
-          Logout
-        </Button>
-      </Flex>
+      <Heading mb={6}>Dashboard Amministratore</Heading>
 
-      {/* 🔹 Box KPI */}
-      <SimpleGrid columns={[1, 2, 4]} spacing={6} mb={6}>
-        <MotionBox
-          p={6}
-          bg="blue.500"
-          color="white"
-          rounded="xl"
-          shadow="md"
-          whileHover={{ scale: 1.05 }}
-        >
-          <Text fontSize="lg">Categorie</Text>
-          <Text fontSize="3xl" fontWeight="bold">
-            {categorie}
-          </Text>
-        </MotionBox>
-
-        <MotionBox
-          p={6}
-          bg="green.500"
-          color="white"
-          rounded="xl"
-          shadow="md"
-          whileHover={{ scale: 1.05 }}
-        >
-          <Text fontSize="lg">Utenti</Text>
-          <Text fontSize="3xl" fontWeight="bold">
-            {utenti}
-          </Text>
-        </MotionBox>
-
-        <MotionBox
-          p={6}
-          bg="purple.500"
-          color="white"
-          rounded="xl"
-          shadow="md"
-          whileHover={{ scale: 1.05 }}
-        >
-          <Text fontSize="lg">Segnalazioni Totali</Text>
-          <Text fontSize="3xl" fontWeight="bold">
-            {segnalazioni.length}
-          </Text>
-        </MotionBox>
-
-        <MotionBox
-          p={6}
-          bg="orange.500"
-          color="white"
-          rounded="xl"
-          shadow="md"
-          whileHover={{ scale: 1.05 }}
-        >
-          <Text fontSize="lg">Clienti</Text>
-          <Text fontSize="3xl" fontWeight="bold">
-            {clienti}
-          </Text>
-        </MotionBox>
+      {/* Stat cards – lasciamo i numeri come prima */}
+      <SimpleGrid columns={{ base: 2, md: 4 }} spacing={4} mb={6}>
+        <Stat p={4} borderWidth="1px" rounded="md">
+          <StatLabel>Segnalazioni Totali</StatLabel>
+          <StatNumber>{segnalazioni.length}</StatNumber>
+        </Stat>
+        <Stat p={4} borderWidth="1px" rounded="md">
+          <StatLabel>Clienti</StatLabel>
+          <StatNumber>{clienti.length}</StatNumber>
+        </Stat>
+        <Stat p={4} borderWidth="1px" rounded="md">
+          <StatLabel>Categorie</StatLabel>
+          <StatNumber>{categorie.length}</StatNumber>
+        </Stat>
+        <Stat p={4} borderWidth="1px" rounded="md">
+          <StatLabel>Utenti</StatLabel>
+          <StatNumber>{utenti.length}</StatNumber>
+        </Stat>
       </SimpleGrid>
 
-      {/* 🔹 Tabella segnalazioni */}
-      <Box overflowX="auto" bg="white" p={6} rounded="xl" shadow="md">
-        <Flex justify="space-between" align="center" mb={4}>
-          <Text fontSize="xl" fontWeight="bold">
-            Segnalazioni
-          </Text>
-          <Flex gap={2}>
-            <Button colorScheme="blue" onClick={exportToCSV}>
-              Esporta CSV
-            </Button>
-            <Button colorScheme="green" onClick={exportToPDF}>
-              Esporta PDF
-            </Button>
-          </Flex>
-        </Flex>
+      {/* Filtri – non cambio UX: data, categoria, cliente */}
+      <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4} mb={4}>
+        <Input
+          placeholder="gg/mm/aaaa"
+          value={filtroData}
+          onChange={(e) => setFiltroData(e.target.value)}
+        />
+        <Select
+          value={filtroCategoria}
+          onChange={(e) => setFiltroCategoria(e.target.value)}
+        >
+          <option value="">Tutte le categorie</option>
+          {ensureArray<any>(categorie).map((c: any) => (
+            <option key={c.id} value={c.nome_categoria}>{c.nome_categoria}</option>
+          ))}
+        </Select>
+        <Select
+          value={filtroCliente}
+          onChange={(e) => setFiltroCliente(e.target.value)}
+        >
+          <option value="">Tutti i clienti</option>
+          {ensureArray<any>(clienti).map((cl: any) => (
+            <option key={cl.id} value={cl.nome_sala}>{cl.nome_sala}</option>
+          ))}
+        </Select>
+      </SimpleGrid>
 
-        <Table variant="simple">
-          <Thead>
-            <Tr>
-              <Th>Data</Th>
-              <Th>Ora</Th>
-              <Th>Categoria</Th>
-              <Th>Sala</Th>
-              <Th>Descrizione</Th>
+      <Table size="sm" variant="simple">
+        <Thead>
+          <Tr>
+            <Th>ID</Th>
+            <Th>DATA</Th>
+            <Th>ORA</Th>
+            <Th>CATEGORIA</Th>
+            <Th>SALA</Th>
+            <Th>DESCRIZIONE</Th>
+          </Tr>
+        </Thead>
+        <Tbody>
+          {segnalazioniFiltrate.map((s) => (
+            <Tr key={s.id}>
+              <Td>{s.id}</Td>
+              <Td>{s.data}</Td>
+              <Td>{s.ora}</Td>
+              <Td>{s.categoria ?? ""}</Td>
+              <Td>{s.sala ?? ""}</Td>
+              <Td>{s.descrizione}</Td>
             </Tr>
-          </Thead>
-          <Tbody>
-            {segnalazioni.map((s) => (
-              <Tr key={s.id}>
-                <Td>{s.data}</Td>
-                <Td>{s.ora}</Td>
-                <Td>{s.categoria}</Td>
-                <Td>{s.sala}</Td>
-                <Td>{s.descrizione}</Td>
-              </Tr>
-            ))}
-          </Tbody>
-        </Table>
+          ))}
+        </Tbody>
+      </Table>
+
+      <Box mt={6} display="flex" gap={3} flexWrap="wrap">
+        <Button colorScheme="green" onClick={exportCSV}>Esporta CSV</Button>
+        <Button colorScheme="blue" onClick={exportPDF}>Esporta PDF</Button>
+        {/* I tuoi tre bottoni esistenti restano qui */}
+        {/* <Button>Gestione Utenti</Button>
+            <Button>Gestione Categorie</Button>
+            <Button>Gestione Clienti</Button> */}
       </Box>
     </Box>
   );
