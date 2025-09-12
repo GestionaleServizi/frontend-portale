@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from "react";
 import {
   Box,
-  Flex,
-  Heading,
   Text,
+  SimpleGrid,
   Table,
   Thead,
   Tbody,
@@ -11,200 +10,174 @@ import {
   Th,
   Td,
   Button,
-  HStack,
-  Select,
-  Input,
-  useToast,
+  Flex,
 } from "@chakra-ui/react";
-import { useAuth } from "../hooks/useAuth";
-import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import { jsPDF } from "jspdf";
+import Papa from "papaparse";
+import { motion } from "framer-motion";
 
-type Segnalazione = {
+const MotionBox = motion(Box);
+
+interface Segnalazione {
   id: number;
   data: string;
   ora: string;
+  categoria: string;
+  sala: string;
   descrizione: string;
-  nome_categoria?: string;
-  nome_sala?: string;
-};
-
-type Categoria = { id: number; nome_categoria: string };
-type Cliente = { id: number; nome_sala: string };
+}
 
 export default function DashboardAdmin() {
-  const { token } = useAuth();
+  const [categorie, setCategorie] = useState<number>(0);
+  const [utenti, setUtenti] = useState<number>(0);
   const [segnalazioni, setSegnalazioni] = useState<Segnalazione[]>([]);
-  const [categorie, setCategorie] = useState<Categoria[]>([]);
-  const [clienti, setClienti] = useState<Cliente[]>([]);
-  const [utenti, setUtenti] = useState<any[]>([]);
-  const [filtroData, setFiltroData] = useState("");
-  const [filtroCategoria, setFiltroCategoria] = useState("");
-  const [filtroCliente, setFiltroCliente] = useState("");
-  const toast = useToast();
-  const nav = useNavigate();
+  const [clienti, setClienti] = useState<number>(0);
 
-  // Carica dati
-  const loadData = async () => {
-    try {
-      const [segRes, catRes, cliRes, uteRes] = await Promise.all([
-        fetch(`${import.meta.env.VITE_API_BASE_URL}/segnalazioni`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${import.meta.env.VITE_API_BASE_URL}/categorie`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${import.meta.env.VITE_API_BASE_URL}/clienti`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${import.meta.env.VITE_API_BASE_URL}/utenti`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-      ]);
-
-      setSegnalazioni(await segRes.json());
-      setCategorie(await catRes.json());
-      setClienti(await cliRes.json());
-      setUtenti(await uteRes.json());
-    } catch {
-      toast({ title: "Errore caricamento dati", status: "error" });
-    }
+  // 📌 Funzione per esportare CSV
+  const exportToCSV = () => {
+    const csv = Papa.unparse(segnalazioni);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "segnalazioni.csv";
+    a.click();
   };
 
+  // 📌 Funzione per esportare PDF
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    doc.text("Segnalazioni", 20, 10);
+    segnalazioni.forEach((s, i) => {
+      doc.text(
+        `${s.data} ${s.ora} | ${s.categoria} | ${s.sala} | ${s.descrizione}`,
+        20,
+        20 + i * 10
+      );
+    });
+    doc.save("segnalazioni.pdf");
+  };
+
+  // 📌 Caricamento dati dal backend
   useEffect(() => {
-    loadData();
+    const fetchData = async () => {
+      try {
+        const [catRes, utRes, segRes, clRes] = await Promise.all([
+          axios.get("/api/categorie"),
+          axios.get("/api/utenti"),
+          axios.get("/api/segnalazioni"),
+          axios.get("/api/clienti"),
+        ]);
+
+        setCategorie(catRes.data.length);
+        setUtenti(utRes.data.length);
+        setSegnalazioni(segRes.data);
+        setClienti(clRes.data.length);
+      } catch (err) {
+        console.error("Errore caricamento dati dashboard:", err);
+      }
+    };
+
+    fetchData();
   }, []);
 
-  // Filtro segnalazioni
-  const segnalazioniFiltrate = segnalazioni.filter((s) => {
-    const dataMatch = filtroData ? s.data.startsWith(filtroData) : true;
-    const catMatch = filtroCategoria
-      ? s.nome_categoria === filtroCategoria
-      : true;
-    const cliMatch = filtroCliente ? s.nome_sala === filtroCliente : true;
-    return dataMatch && catMatch && cliMatch;
-  });
-
-  // Esporta CSV
-  const esportaCSV = () => {
-    const header = ["ID", "Data", "Ora", "Categoria", "Sala", "Descrizione"];
-    const rows = segnalazioniFiltrate.map((s) => [
-      s.id,
-      new Date(s.data).toLocaleDateString("it-IT"),
-      s.ora,
-      s.nome_categoria || "",
-      s.nome_sala || "",
-      s.descrizione || "",
-    ]);
-    const csvContent =
-      "data:text/csv;charset=utf-8," +
-      [header, ...rows].map((e) => e.join(";")).join("\n");
-
-    const link = document.createElement("a");
-    link.setAttribute("href", encodeURI(csvContent));
-    link.setAttribute("download", "segnalazioni.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  // Esporta PDF
-  const esportaPDF = () => {
-    const printContent = `
-      <h2>Segnalazioni</h2>
-      <table border="1" cellspacing="0" cellpadding="4">
-        <thead>
-          <tr>
-            <th>ID</th><th>Data</th><th>Ora</th>
-            <th>Categoria</th><th>Sala</th><th>Descrizione</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${segnalazioniFiltrate
-            .map(
-              (s) => `
-            <tr>
-              <td>${s.id}</td>
-              <td>${new Date(s.data).toLocaleDateString("it-IT")}</td>
-              <td>${s.ora}</td>
-              <td>${s.nome_categoria || ""}</td>
-              <td>${s.nome_sala || ""}</td>
-              <td>${s.descrizione || ""}</td>
-            </tr>`
-            )
-            .join("")}
-        </tbody>
-      </table>
-    `;
-    const newWin = window.open("", "_blank");
-    newWin!.document.write(printContent);
-    newWin!.print();
-    newWin!.close();
+  // 📌 Logout finto (placeholder)
+  const handleLogout = () => {
+    console.log("Logout non ancora implementato 🚪");
+    // qui poi metteremo logica: rimozione token, redirect a login, ecc.
   };
 
   return (
-    <Flex minH="100vh" bg="gray.50" direction="column" p={8}>
-      <Heading mb={6}>📊 Dashboard Amministratore</Heading>
-
-      {/* KPI */}
-      <HStack spacing={6} mb={6}>
-        <Box p={6} bg="white" borderRadius="lg" shadow="md" textAlign="center">
-          <Text fontSize="sm">📊 Segnalazioni Totali</Text>
-          <Heading size="lg">{segnalazioni.length}</Heading>
-        </Box>
-        <Box p={6} bg="white" borderRadius="lg" shadow="md" textAlign="center">
-          <Text fontSize="sm">🏢 Clienti</Text>
-          <Heading size="lg">{clienti.length}</Heading>
-        </Box>
-        <Box p={6} bg="white" borderRadius="lg" shadow="md" textAlign="center">
-          <Text fontSize="sm">🗂️ Categorie</Text>
-          <Heading size="lg">{categorie.length}</Heading>
-        </Box>
-        <Box p={6} bg="white" borderRadius="lg" shadow="md" textAlign="center">
-          <Text fontSize="sm">👥 Utenti</Text>
-          <Heading size="lg">{utenti.length}</Heading>
-        </Box>
-      </HStack>
-
-      {/* Filtri */}
-      <HStack mb={4} spacing={4}>
-        <Input
-          type="date"
-          value={filtroData}
-          onChange={(e) => setFiltroData(e.target.value)}
-        />
-        <Select
-          placeholder="Tutte le categorie"
-          value={filtroCategoria}
-          onChange={(e) => setFiltroCategoria(e.target.value)}
-        >
-          {categorie.map((c) => (
-            <option key={c.id} value={c.nome_categoria}>
-              {c.nome_categoria}
-            </option>
-          ))}
-        </Select>
-        <Select
-          placeholder="Tutti i clienti"
-          value={filtroCliente}
-          onChange={(e) => setFiltroCliente(e.target.value)}
-        >
-          {clienti.map((c) => (
-            <option key={c.id} value={c.nome_sala}>
-              {c.nome_sala}
-            </option>
-          ))}
-        </Select>
-        <Button onClick={() => {setFiltroData(""); setFiltroCategoria(""); setFiltroCliente("");}}>
-          Reset Filtri
+    <Box p={6}>
+      {/* 🔹 Header con Logout */}
+      <Flex justify="space-between" align="center" mb={6}>
+        <Text fontSize="2xl" fontWeight="bold">
+          Dashboard Admin
+        </Text>
+        <Button colorScheme="red" onClick={handleLogout}>
+          Logout
         </Button>
-      </HStack>
+      </Flex>
 
-      {/* Tabella segnalazioni */}
-      <Box bg="white" p={6} borderRadius="lg" shadow="md">
-        <Table>
+      {/* 🔹 Box KPI */}
+      <SimpleGrid columns={[1, 2, 4]} spacing={6} mb={6}>
+        <MotionBox
+          p={6}
+          bg="blue.500"
+          color="white"
+          rounded="xl"
+          shadow="md"
+          whileHover={{ scale: 1.05 }}
+        >
+          <Text fontSize="lg">Categorie</Text>
+          <Text fontSize="3xl" fontWeight="bold">
+            {categorie}
+          </Text>
+        </MotionBox>
+
+        <MotionBox
+          p={6}
+          bg="green.500"
+          color="white"
+          rounded="xl"
+          shadow="md"
+          whileHover={{ scale: 1.05 }}
+        >
+          <Text fontSize="lg">Utenti</Text>
+          <Text fontSize="3xl" fontWeight="bold">
+            {utenti}
+          </Text>
+        </MotionBox>
+
+        <MotionBox
+          p={6}
+          bg="purple.500"
+          color="white"
+          rounded="xl"
+          shadow="md"
+          whileHover={{ scale: 1.05 }}
+        >
+          <Text fontSize="lg">Segnalazioni Totali</Text>
+          <Text fontSize="3xl" fontWeight="bold">
+            {segnalazioni.length}
+          </Text>
+        </MotionBox>
+
+        <MotionBox
+          p={6}
+          bg="orange.500"
+          color="white"
+          rounded="xl"
+          shadow="md"
+          whileHover={{ scale: 1.05 }}
+        >
+          <Text fontSize="lg">Clienti</Text>
+          <Text fontSize="3xl" fontWeight="bold">
+            {clienti}
+          </Text>
+        </MotionBox>
+      </SimpleGrid>
+
+      {/* 🔹 Tabella segnalazioni */}
+      <Box overflowX="auto" bg="white" p={6} rounded="xl" shadow="md">
+        <Flex justify="space-between" align="center" mb={4}>
+          <Text fontSize="xl" fontWeight="bold">
+            Segnalazioni
+          </Text>
+          <Flex gap={2}>
+            <Button colorScheme="blue" onClick={exportToCSV}>
+              Esporta CSV
+            </Button>
+            <Button colorScheme="green" onClick={exportToPDF}>
+              Esporta PDF
+            </Button>
+          </Flex>
+        </Flex>
+
+        <Table variant="simple">
           <Thead>
             <Tr>
-              <Th>ID</Th>
               <Th>Data</Th>
               <Th>Ora</Th>
               <Th>Categoria</Th>
@@ -213,42 +186,18 @@ export default function DashboardAdmin() {
             </Tr>
           </Thead>
           <Tbody>
-            {segnalazioniFiltrate.map((s) => (
+            {segnalazioni.map((s) => (
               <Tr key={s.id}>
-                <Td>{s.id}</Td>
-                <Td>{new Date(s.data).toLocaleDateString("it-IT")}</Td>
+                <Td>{s.data}</Td>
                 <Td>{s.ora}</Td>
-                <Td>{s.nome_categoria}</Td>
-                <Td>{s.nome_sala}</Td>
+                <Td>{s.categoria}</Td>
+                <Td>{s.sala}</Td>
                 <Td>{s.descrizione}</Td>
               </Tr>
             ))}
           </Tbody>
         </Table>
       </Box>
-
-      {/* Bottoni Export */}
-      <HStack spacing={6} justify="center" mt={4}>
-        <Button colorScheme="green" onClick={esportaCSV}>
-          ⬇️ Esporta CSV
-        </Button>
-        <Button colorScheme="blue" onClick={esportaPDF}>
-          ⬇️ Esporta PDF
-        </Button>
-      </HStack>
-
-      {/* Navigazione alle gestioni */}
-      <HStack spacing={4} justify="center" mt={6}>
-        <Button colorScheme="blue" onClick={() => nav("/utenti")}>
-          👥 Gestione Utenti
-        </Button>
-        <Button colorScheme="purple" onClick={() => nav("/categorie")}>
-          🗂️ Gestione Categorie
-        </Button>
-        <Button colorScheme="teal" onClick={() => nav("/clienti")}>
-          🏢 Gestione Clienti
-        </Button>
-      </HStack>
-    </Flex>
+    </Box>
   );
 }
