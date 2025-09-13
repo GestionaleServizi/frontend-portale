@@ -1,216 +1,154 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { getCategorie, createSegnalazione } from "../api";  // ✅ export nominati
 
-// Helpers
-function getToken() {
-  return localStorage.getItem("token");
-}
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL; // deve finire con /api
-
-async function apiFetch(path: string, init?: RequestInit) {
-  const token = getToken();
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 15000); // 15s
-
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers || {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    signal: ctrl.signal,
-  }).catch((e) => {
-    throw new Error(e?.name === "AbortError" ? "Timeout" : (e?.message || "Network error"));
-  });
-  clearTimeout(timer);
-
-  if (res.status === 401) {
-    const msg = (await res.text().catch(() => "")) || "Unauthorized";
-    const err = new Error(msg);
-    // @ts-expect-error custom flag
-    err.code = 401;
-    throw err;
-  }
-  if (!res.ok) {
-    const msg = (await res.text().catch(() => "")) || `HTTP ${res.status}`;
-    throw new Error(msg);
-  }
-  return res.json();
-}
-
-type Categoria = { id: number; nome_categoria: string };
+type Categoria = {
+  id: number;
+  nome_categoria: string;
+};
 
 export default function Segnalazione() {
-  const navigate = useNavigate();
+  const nav = useNavigate();
 
-  const today = useMemo(() => {
+  const [data, setData] = useState<string>(() =>
+    new Date().toISOString().slice(0, 10)
+  );
+  const [ora, setOra] = useState<string>(() => {
     const d = new Date();
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
-  }, []);
-
-  const now = useMemo(() => {
-    const d = new Date();
-    const hh = String(d.getHours()).padStart(2, "0");
-    const mi = String(d.getMinutes()).padStart(2, "0");
-    return `${hh}:${mi}`;
-  }, []);
-
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState<string | null>(null);
+    return `${String(d.getHours()).padStart(2, "0")}:${String(
+      d.getMinutes()
+    ).padStart(2, "0")}`;
+  });
   const [categorie, setCategorie] = useState<Categoria[]>([]);
-  const [data, setData] = useState(today);
-  const [ora, setOra] = useState(now);
   const [categoriaId, setCategoriaId] = useState<number | "">("");
-  const [descrizione, setDescrizione] = useState("");
+  const [descrizione, setDescrizione] = useState<string>("");
 
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  // 🔹 se non c’è token → redirect al login
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      nav("/login", { replace: true });
+    }
+  }, [nav]);
+
+  // 🔹 carico categorie
   useEffect(() => {
     let alive = true;
-    (async () => {
-      setLoading(true);
-      setErr(null);
+
+    async function run() {
       try {
-        const token = getToken();
-        if (!token) {
-          navigate("/login", { replace: true });
-          return;
-        }
-        const cats = (await apiFetch("/categorie")) as Categoria[];
-        if (!alive) return;
-        setCategorie(cats);
-      } catch (e: any) {
-        if (e?.code === 401) {
-          // token scaduto o assente → login
-          navigate("/login", { replace: true });
-          return;
-        }
-        setErr(e?.message || "Errore nel caricamento categorie");
-      } finally {
-        if (alive) setLoading(false);
+        const rows = await getCategorie();
+        if (alive) setCategorie(rows);
+      } catch (err: any) {
+        setMsg("Errore nel caricamento categorie");
+        console.error(err);
       }
-    })();
+    }
+
+    run();
     return () => {
       alive = false;
     };
-  }, [navigate]);
+  }, []);
 
-  async function salva(e: React.FormEvent) {
+  // 🔹 submit segnalazione
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setErr(null);
+    setLoading(true);
+    setMsg(null);
+
     try {
-      if (!categoriaId) throw new Error("Seleziona una categoria");
-      await apiFetch("/segnalazioni", {
-        method: "POST",
-        body: JSON.stringify({
-          data,
-          ora,
-          categoria_id: categoriaId,
-          descrizione,
-        }),
+      await createSegnalazione({
+        data,
+        ora,
+        categoria_id: categoriaId as number,
+        descrizione,
       });
-      // dopo salvataggio: vai dashboard o resetta form
+      setMsg("✅ Segnalazione salvata con successo");
       setDescrizione("");
       setCategoriaId("");
-      alert("Segnalazione salvata");
-    } catch (e: any) {
-      if (e?.code === 401) {
-        navigate("/login", { replace: true });
-        return;
-      }
-      setErr(e?.message || "Errore nel salvataggio");
+    } catch (err: any) {
+      setMsg("❌ Errore nel salvataggio della segnalazione");
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#0b0b0e] text-white p-6">
-        <div className="max-w-3xl mx-auto">Caricamento…</div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-[#0b0b0e] text-white p-6">
-      <div className="max-w-3xl mx-auto">
-        <h1 className="text-2xl font-semibold mb-4">Nuova Segnalazione</h1>
+    <div className="max-w-lg mx-auto mt-10 p-6 bg-gray-900 text-white rounded-2xl shadow-lg">
+      <h1 className="text-2xl font-bold mb-6">Nuova Segnalazione</h1>
 
-        {err && <div className="mb-4 text-red-400 text-sm">{err}</div>}
+      {msg && <div className="mb-4 text-center">{msg}</div>}
 
-        <form onSubmit={salva} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <label className="block">
-              <span className="text-sm text-gray-300">Data</span>
-              <input
-                type="date"
-                value={data}
-                onChange={(e) => setData(e.currentTarget.value)}
-                className="mt-1 w-full rounded-md bg-[#0f0f14] border border-[#2a2a34] px-3 py-2 outline-none focus:border-[#6c5ce7]"
-                required
-              />
-            </label>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block mb-1">Data</label>
+          <input
+            type="date"
+            value={data}
+            onChange={(e) => setData(e.target.value)}
+            className="w-full p-2 rounded bg-gray-800 border border-gray-600"
+          />
+        </div>
 
-            <label className="block">
-              <span className="text-sm text-gray-300">Ora</span>
-              <input
-                type="time"
-                value={ora}
-                onChange={(e) => setOra(e.currentTarget.value)}
-                className="mt-1 w-full rounded-md bg-[#0f0f14] border border-[#2a2a34] px-3 py-2 outline-none focus:border-[#6c5ce7]"
-                required
-              />
-            </label>
-          </div>
+        <div>
+          <label className="block mb-1">Ora</label>
+          <input
+            type="time"
+            value={ora}
+            onChange={(e) => setOra(e.target.value)}
+            className="w-full p-2 rounded bg-gray-800 border border-gray-600"
+          />
+        </div>
 
-          <label className="block">
-            <span className="text-sm text-gray-300">Categoria</span>
-            <select
-              value={categoriaId}
-              onChange={(e) => setCategoriaId(e.currentTarget.value ? Number(e.currentTarget.value) : "")}
-              className="mt-1 w-full rounded-md bg-[#0f0f14] border border-[#2a2a34] px-3 py-2 outline-none focus:border-[#6c5ce7]"
-              required
-            >
-              <option value="">— Seleziona —</option>
-              {categorie.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nome_categoria}
-                </option>
-              ))}
-            </select>
-          </label>
+        <div>
+          <label className="block mb-1">Categoria</label>
+          <select
+            value={categoriaId}
+            onChange={(e) => setCategoriaId(Number(e.target.value))}
+            className="w-full p-2 rounded bg-gray-800 border border-gray-600"
+          >
+            <option value="">-- Seleziona --</option>
+            {categorie.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nome_categoria}
+              </option>
+            ))}
+          </select>
+        </div>
 
-          <label className="block">
-            <span className="text-sm text-gray-300">Descrizione</span>
-            <textarea
-              value={descrizione}
-              onChange={(e) => setDescrizione(e.currentTarget.value)}
-              rows={4}
-              className="mt-1 w-full rounded-md bg-[#0f0f14] border border-[#2a2a34] px-3 py-2 outline-none focus:border-[#6c5ce7]"
-              placeholder="Descrivi la segnalazione…"
-              required
-            />
-          </label>
+        <div>
+          <label className="block mb-1">Descrizione</label>
+          <textarea
+            value={descrizione}
+            onChange={(e) => setDescrizione(e.target.value)}
+            className="w-full p-2 rounded bg-gray-800 border border-gray-600"
+            rows={4}
+            placeholder="Descrivi la segnalazione..."
+          />
+        </div>
 
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={() => navigate("/")}
-              className="rounded-md bg-[#23232b] hover:bg-[#2b2b35] transition-colors px-4 py-2"
-            >
-              Annulla
-            </button>
-            <button
-              type="submit"
-              className="rounded-md bg-[#6c5ce7] hover:bg-[#5a49e0] transition-colors px-4 py-2 font-medium"
-            >
-              Salva segnalazione
-            </button>
-          </div>
-        </form>
-      </div>
+        <div className="flex justify-between">
+          <button
+            type="button"
+            onClick={() => nav("/dashboard")}
+            className="px-4 py-2 rounded bg-gray-600 hover:bg-gray-500"
+          >
+            Annulla
+          </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-500 disabled:opacity-50"
+          >
+            {loading ? "Salvataggio..." : "Salva segnalazione"}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
