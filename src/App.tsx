@@ -1,7 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import DashboardAdmin from "./pages/DashboardAdmin";
-import SegnalazioneOperatore from "./pages/SegnalazioneOperatore"; // 👈 nuovo import
+import SegnalazioneOperatore from "./pages/SegnalazioneOperatore"; // 👈 nuova pagina
 import Utenti from "./pages/Utenti";
 import Categorie from "./pages/Categorie";
 import Clienti from "./pages/Clienti";
@@ -33,9 +33,11 @@ function App() {
           />
 
           {/* Segnalazioni Operatore */}
-         <Route path="/" element={<Login />} />
-        <Route path="/dashboard" element={<DashboardAdmin />} />
-        <Route path="/segnalazioni-operatore" element={<SegnalazioneOperatore />} /> {/* 👈 nuova route */}
+          <Route
+            path="/segnalazioni-operatore"
+            element={
+              <PrivateRoute ruolo="operatore">
+                <SegnalazioneOperatore />
               </PrivateRoute>
             }
           />
