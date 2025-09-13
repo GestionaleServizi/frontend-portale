@@ -33,11 +33,9 @@ function App() {
           />
 
           {/* Segnalazioni Operatore */}
-          <Route
-            path="/segnalazioni"
-            element={
-              <PrivateRoute ruolo="operatore">
-                <SegnalazioneOperatore />
+         <Route path="/" element={<Login />} />
+        <Route path="/dashboard" element={<DashboardAdmin />} />
+        <Route path="/segnalazioni-operatore" element={<SegnalazioneOperatore />} /> {/* 👈 nuova route */}
               </PrivateRoute>
             }
           />
