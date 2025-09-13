@@ -14,7 +14,6 @@ import {
   HStack,
   Select,
   Input,
-  Textarea,
   useToast,
 } from "@chakra-ui/react";
 import { useAuth } from "../hooks/useAuth";
@@ -24,23 +23,21 @@ type Segnalazione = {
   data: string;
   ora: string;
   descrizione: string;
-  categoria: string;
-  sala: string;
+  categoria?: string;
+  nome_sala?: string;
 };
 
 type Categoria = { id: number; nome_categoria: string };
 
 export default function Segnalazione() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [segnalazioni, setSegnalazioni] = useState<Segnalazione[]>([]);
   const [categorie, setCategorie] = useState<Categoria[]>([]);
-  const [descrizione, setDescrizione] = useState("");
-  const [categoriaId, setCategoriaId] = useState("");
   const [filtroData, setFiltroData] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("");
   const toast = useToast();
 
-  // 📌 Carica segnalazioni e categorie
+  // Carica dati
   const loadData = async () => {
     try {
       const [segRes, catRes] = await Promise.all([
@@ -52,10 +49,15 @@ export default function Segnalazione() {
         }),
       ]);
 
-      setSegnalazioni(await segRes.json());
-      setCategorie(await catRes.json());
-    } catch {
-      toast({ title: "Errore nel caricamento dati", status: "error" });
+      const segData = await segRes.json();
+      const catData = await catRes.json();
+
+      // Se la risposta non è un array, forziamo a []
+      setSegnalazioni(Array.isArray(segData) ? segData : []);
+      setCategorie(Array.isArray(catData) ? catData : []);
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Errore caricamento dati", status: "error" });
     }
   };
 
@@ -63,62 +65,25 @@ export default function Segnalazione() {
     loadData();
   }, []);
 
-  // 📌 Inserisci segnalazione
-  const handleSubmit = async () => {
-    if (!descrizione || !categoriaId) {
-      toast({ title: "Compila tutti i campi", status: "warning" });
-      return;
-    }
+  // Filtro segnalazioni
+  const segnalazioniFiltrate = Array.isArray(segnalazioni)
+    ? segnalazioni.filter((s) => {
+        const dataMatch = filtroData ? s.data.startsWith(filtroData) : true;
+        const catMatch = filtroCategoria ? s.categoria === filtroCategoria : true;
+        return dataMatch && catMatch;
+      })
+    : [];
 
-    const now = new Date();
-    const data = now.toISOString().split("T")[0];
-    const ora = now.toTimeString().split(" ")[0].slice(0, 5);
-
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/segnalazioni-operatore`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            data,
-            ora,
-            descrizione,
-            categoria_id: categoriaId,
-          }),
-        }
-      );
-
-      if (!res.ok) throw new Error();
-      toast({ title: "Segnalazione inviata", status: "success" });
-      setDescrizione("");
-      setCategoriaId("");
-      loadData();
-    } catch {
-      toast({ title: "Errore nell'invio", status: "error" });
-    }
-  };
-
-  // 📌 Filtra segnalazioni
-  const segnalazioniFiltrate = segnalazioni.filter((s) => {
-    const dataMatch = filtroData ? s.data.startsWith(filtroData) : true;
-    const catMatch = filtroCategoria ? s.categoria === filtroCategoria : true;
-    return dataMatch && catMatch;
-  });
-
-  // 📌 Esporta CSV
+  // Esporta CSV
   const esportaCSV = () => {
     const header = ["ID", "Data", "Ora", "Categoria", "Sala", "Descrizione"];
     const rows = segnalazioniFiltrate.map((s) => [
       s.id,
       new Date(s.data).toLocaleDateString("it-IT"),
       s.ora,
-      s.categoria,
-      s.sala,
-      s.descrizione,
+      s.categoria || "",
+      s.nome_sala || "",
+      s.descrizione || "",
     ]);
     const csvContent =
       "data:text/csv;charset=utf-8," +
@@ -126,16 +91,16 @@ export default function Segnalazione() {
 
     const link = document.createElement("a");
     link.setAttribute("href", encodeURI(csvContent));
-    link.setAttribute("download", "segnalazioni_operatore.csv");
+    link.setAttribute("download", "segnalazioni.csv");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  // 📌 Esporta PDF (stampa browser)
+  // Esporta PDF
   const esportaPDF = () => {
     const printContent = `
-      <h2>Segnalazioni Operatore</h2>
+      <h2>Segnalazioni</h2>
       <table border="1" cellspacing="0" cellpadding="4">
         <thead>
           <tr>
@@ -151,9 +116,9 @@ export default function Segnalazione() {
               <td>${s.id}</td>
               <td>${new Date(s.data).toLocaleDateString("it-IT")}</td>
               <td>${s.ora}</td>
-              <td>${s.categoria}</td>
-              <td>${s.sala}</td>
-              <td>${s.descrizione}</td>
+              <td>${s.categoria || ""}</td>
+              <td>${s.nome_sala || ""}</td>
+              <td>${s.descrizione || ""}</td>
             </tr>`
             )
             .join("")}
@@ -168,37 +133,9 @@ export default function Segnalazione() {
 
   return (
     <Flex minH="100vh" bg="gray.50" direction="column" p={8}>
-      <Heading mb={6}>📋 Segnalazioni Operatore</Heading>
+      <Heading mb={6}>📑 Segnalazioni Operatore</Heading>
 
-      {/* Form segnalazione */}
-      <Box bg="white" p={6} borderRadius="lg" shadow="md" mb={6}>
-        <Heading size="md" mb={4}>
-          ➕ Nuova Segnalazione
-        </Heading>
-        <HStack spacing={4} mb={4}>
-          <Select
-            placeholder="Seleziona categoria"
-            value={categoriaId}
-            onChange={(e) => setCategoriaId(e.target.value)}
-          >
-            {categorie.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nome_categoria}
-              </option>
-            ))}
-          </Select>
-          <Textarea
-            placeholder="Descrizione"
-            value={descrizione}
-            onChange={(e) => setDescrizione(e.target.value)}
-          />
-          <Button colorScheme="blue" onClick={handleSubmit}>
-            Invia
-          </Button>
-        </HStack>
-      </Box>
-
-      {/* Filtri storico */}
+      {/* Filtri */}
       <HStack mb={4} spacing={4}>
         <Input
           type="date"
@@ -226,7 +163,7 @@ export default function Segnalazione() {
         </Button>
       </HStack>
 
-      {/* Tabella storico */}
+      {/* Tabella segnalazioni */}
       <Box bg="white" p={6} borderRadius="lg" shadow="md">
         <Table>
           <Thead>
@@ -246,7 +183,7 @@ export default function Segnalazione() {
                 <Td>{new Date(s.data).toLocaleDateString("it-IT")}</Td>
                 <Td>{s.ora}</Td>
                 <Td>{s.categoria}</Td>
-                <Td>{s.sala}</Td>
+                <Td>{s.nome_sala}</Td>
                 <Td>{s.descrizione}</Td>
               </Tr>
             ))}
