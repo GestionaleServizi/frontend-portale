@@ -1,19 +1,19 @@
-// src/pages/Segnalazione.tsx
 import React, { useEffect, useState } from "react";
 import {
   Box,
-  Button,
   Flex,
   Heading,
-  HStack,
-  Input,
-  Select,
+  Text,
   Table,
-  Tbody,
-  Td,
-  Th,
   Thead,
+  Tbody,
   Tr,
+  Th,
+  Td,
+  Button,
+  HStack,
+  Select,
+  Input,
   Textarea,
   useToast,
 } from "@chakra-ui/react";
@@ -24,8 +24,8 @@ type Segnalazione = {
   data: string;
   ora: string;
   descrizione: string;
-  nome_categoria?: string;
-  nome_sala?: string;
+  categoria?: string;
+  sala?: string;
 };
 
 type Categoria = { id: number; nome_categoria: string };
@@ -44,17 +44,18 @@ export default function Segnalazione() {
   });
   const toast = useToast();
 
-  // Carica segnalazioni e categorie
+  // Carica dati
   const loadData = async () => {
     try {
       const [segRes, catRes] = await Promise.all([
-        fetch(`${import.meta.env.VITE_API_BASE_URL}/segnalazioni-operatore`, {
+        fetch(`${import.meta.env.VITE_API_BASE_URL}/segnalazioni`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
         fetch(`${import.meta.env.VITE_API_BASE_URL}/categorie`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
+
       setSegnalazioni(await segRes.json());
       setCategorie(await catRes.json());
     } catch {
@@ -69,22 +70,17 @@ export default function Segnalazione() {
   // Invia nuova segnalazione
   const handleSubmit = async () => {
     try {
-      const res = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/segnalazioni`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            ...formData,
-            cliente_id: user?.cliente_id, // 👈 la sala è legata all'utente
-          }),
-        }
-      );
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/segnalazioni`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(formData),
+      });
 
-      if (!res.ok) throw new Error("Errore salvataggio");
+      if (!res.ok) throw new Error("Errore inserimento");
+
       toast({ title: "Segnalazione inserita", status: "success" });
       setFormData({ data: "", ora: "", descrizione: "", categoria_id: "" });
       loadData();
@@ -96,9 +92,7 @@ export default function Segnalazione() {
   // Filtri
   const segnalazioniFiltrate = segnalazioni.filter((s) => {
     const dataMatch = filtroData ? s.data.startsWith(filtroData) : true;
-    const catMatch = filtroCategoria
-      ? s.nome_categoria === filtroCategoria
-      : true;
+    const catMatch = filtroCategoria ? s.categoria === filtroCategoria : true;
     return dataMatch && catMatch;
   });
 
@@ -109,8 +103,8 @@ export default function Segnalazione() {
       s.id,
       new Date(s.data).toLocaleDateString("it-IT"),
       s.ora,
-      s.nome_categoria || "",
-      s.nome_sala || "",
+      s.categoria || "",
+      s.sala || "",
       s.descrizione || "",
     ]);
     const csvContent =
@@ -128,7 +122,7 @@ export default function Segnalazione() {
   // Export PDF
   const esportaPDF = () => {
     const printContent = `
-      <h2>Segnalazioni Operatore</h2>
+      <h2>Segnalazioni</h2>
       <table border="1" cellspacing="0" cellpadding="4">
         <thead>
           <tr>
@@ -144,8 +138,8 @@ export default function Segnalazione() {
               <td>${s.id}</td>
               <td>${new Date(s.data).toLocaleDateString("it-IT")}</td>
               <td>${s.ora}</td>
-              <td>${s.nome_categoria || ""}</td>
-              <td>${s.nome_sala || ""}</td>
+              <td>${s.categoria || ""}</td>
+              <td>${s.sala || ""}</td>
               <td>${s.descrizione || ""}</td>
             </tr>`
             )
@@ -161,13 +155,10 @@ export default function Segnalazione() {
 
   return (
     <Flex minH="100vh" bg="gray.50" direction="column" p={8}>
-      <Heading mb={6}>📝 Segnalazioni Operatore</Heading>
+      <Heading mb={6}>📋 Nuova Segnalazione</Heading>
 
-      {/* Form inserimento */}
+      {/* Form nuova segnalazione */}
       <Box bg="white" p={6} borderRadius="lg" shadow="md" mb={6}>
-        <Heading size="md" mb={4}>
-          Nuova Segnalazione
-        </Heading>
         <HStack spacing={4} mb={4}>
           <Input
             type="date"
@@ -199,8 +190,9 @@ export default function Segnalazione() {
           onChange={(e) =>
             setFormData({ ...formData, descrizione: e.target.value })
           }
+          mb={4}
         />
-        <Button mt={4} colorScheme="blue" onClick={handleSubmit}>
+        <Button colorScheme="blue" onClick={handleSubmit}>
           Invia Segnalazione
         </Button>
       </Box>
@@ -223,12 +215,7 @@ export default function Segnalazione() {
             </option>
           ))}
         </Select>
-        <Button
-          onClick={() => {
-            setFiltroData("");
-            setFiltroCategoria("");
-          }}
-        >
+        <Button onClick={() => { setFiltroData(""); setFiltroCategoria(""); }}>
           Reset Filtri
         </Button>
       </HStack>
@@ -252,8 +239,8 @@ export default function Segnalazione() {
                 <Td>{s.id}</Td>
                 <Td>{new Date(s.data).toLocaleDateString("it-IT")}</Td>
                 <Td>{s.ora}</Td>
-                <Td>{s.nome_categoria}</Td>
-                <Td>{s.nome_sala}</Td>
+                <Td>{s.categoria}</Td>
+                <Td>{s.sala}</Td>
                 <Td>{s.descrizione}</Td>
               </Tr>
             ))}
@@ -261,7 +248,7 @@ export default function Segnalazione() {
         </Table>
       </Box>
 
-      {/* Bottoni Export */}
+      {/* Bottoni export */}
       <HStack spacing={6} justify="center" mt={4}>
         <Button colorScheme="green" onClick={esportaCSV}>
           ⬇️ Esporta CSV
