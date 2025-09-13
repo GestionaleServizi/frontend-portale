@@ -1,19 +1,20 @@
+// src/pages/Segnalazione.tsx
 import React, { useEffect, useState } from "react";
 import {
   Box,
+  Button,
   Flex,
   Heading,
-  Text,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  Button,
   HStack,
-  Select,
   Input,
+  Select,
+  Table,
+  Tbody,
+  Td,
+  Th,
+  Thead,
+  Tr,
+  Textarea,
   useToast,
 } from "@chakra-ui/react";
 import { useAuth } from "../hooks/useAuth";
@@ -23,7 +24,7 @@ type Segnalazione = {
   data: string;
   ora: string;
   descrizione: string;
-  categoria?: string;
+  nome_categoria?: string;
   nome_sala?: string;
 };
 
@@ -35,9 +36,15 @@ export default function Segnalazione() {
   const [categorie, setCategorie] = useState<Categoria[]>([]);
   const [filtroData, setFiltroData] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("");
+  const [formData, setFormData] = useState({
+    data: "",
+    ora: "",
+    descrizione: "",
+    categoria_id: "",
+  });
   const toast = useToast();
 
-  // Carica dati
+  // Carica segnalazioni e categorie
   const loadData = async () => {
     try {
       const [segRes, catRes] = await Promise.all([
@@ -48,15 +55,9 @@ export default function Segnalazione() {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
-
-      const segData = await segRes.json();
-      const catData = await catRes.json();
-
-      // Se la risposta non è un array, forziamo a []
-      setSegnalazioni(Array.isArray(segData) ? segData : []);
-      setCategorie(Array.isArray(catData) ? catData : []);
-    } catch (err) {
-      console.error(err);
+      setSegnalazioni(await segRes.json());
+      setCategorie(await catRes.json());
+    } catch {
       toast({ title: "Errore caricamento dati", status: "error" });
     }
   };
@@ -65,23 +66,50 @@ export default function Segnalazione() {
     loadData();
   }, []);
 
-  // Filtro segnalazioni
-  const segnalazioniFiltrate = Array.isArray(segnalazioni)
-    ? segnalazioni.filter((s) => {
-        const dataMatch = filtroData ? s.data.startsWith(filtroData) : true;
-        const catMatch = filtroCategoria ? s.categoria === filtroCategoria : true;
-        return dataMatch && catMatch;
-      })
-    : [];
+  // Invia nuova segnalazione
+  const handleSubmit = async () => {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/segnalazioni`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            ...formData,
+            cliente_id: user?.cliente_id, // 👈 la sala è legata all'utente
+          }),
+        }
+      );
 
-  // Esporta CSV
+      if (!res.ok) throw new Error("Errore salvataggio");
+      toast({ title: "Segnalazione inserita", status: "success" });
+      setFormData({ data: "", ora: "", descrizione: "", categoria_id: "" });
+      loadData();
+    } catch {
+      toast({ title: "Errore nel salvataggio", status: "error" });
+    }
+  };
+
+  // Filtri
+  const segnalazioniFiltrate = segnalazioni.filter((s) => {
+    const dataMatch = filtroData ? s.data.startsWith(filtroData) : true;
+    const catMatch = filtroCategoria
+      ? s.nome_categoria === filtroCategoria
+      : true;
+    return dataMatch && catMatch;
+  });
+
+  // Export CSV
   const esportaCSV = () => {
     const header = ["ID", "Data", "Ora", "Categoria", "Sala", "Descrizione"];
     const rows = segnalazioniFiltrate.map((s) => [
       s.id,
       new Date(s.data).toLocaleDateString("it-IT"),
       s.ora,
-      s.categoria || "",
+      s.nome_categoria || "",
       s.nome_sala || "",
       s.descrizione || "",
     ]);
@@ -97,10 +125,10 @@ export default function Segnalazione() {
     document.body.removeChild(link);
   };
 
-  // Esporta PDF
+  // Export PDF
   const esportaPDF = () => {
     const printContent = `
-      <h2>Segnalazioni</h2>
+      <h2>Segnalazioni Operatore</h2>
       <table border="1" cellspacing="0" cellpadding="4">
         <thead>
           <tr>
@@ -116,7 +144,7 @@ export default function Segnalazione() {
               <td>${s.id}</td>
               <td>${new Date(s.data).toLocaleDateString("it-IT")}</td>
               <td>${s.ora}</td>
-              <td>${s.categoria || ""}</td>
+              <td>${s.nome_categoria || ""}</td>
               <td>${s.nome_sala || ""}</td>
               <td>${s.descrizione || ""}</td>
             </tr>`
@@ -133,7 +161,49 @@ export default function Segnalazione() {
 
   return (
     <Flex minH="100vh" bg="gray.50" direction="column" p={8}>
-      <Heading mb={6}>📑 Segnalazioni Operatore</Heading>
+      <Heading mb={6}>📝 Segnalazioni Operatore</Heading>
+
+      {/* Form inserimento */}
+      <Box bg="white" p={6} borderRadius="lg" shadow="md" mb={6}>
+        <Heading size="md" mb={4}>
+          Nuova Segnalazione
+        </Heading>
+        <HStack spacing={4} mb={4}>
+          <Input
+            type="date"
+            value={formData.data}
+            onChange={(e) => setFormData({ ...formData, data: e.target.value })}
+          />
+          <Input
+            type="time"
+            value={formData.ora}
+            onChange={(e) => setFormData({ ...formData, ora: e.target.value })}
+          />
+          <Select
+            placeholder="Seleziona categoria"
+            value={formData.categoria_id}
+            onChange={(e) =>
+              setFormData({ ...formData, categoria_id: e.target.value })
+            }
+          >
+            {categorie.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nome_categoria}
+              </option>
+            ))}
+          </Select>
+        </HStack>
+        <Textarea
+          placeholder="Descrizione"
+          value={formData.descrizione}
+          onChange={(e) =>
+            setFormData({ ...formData, descrizione: e.target.value })
+          }
+        />
+        <Button mt={4} colorScheme="blue" onClick={handleSubmit}>
+          Invia Segnalazione
+        </Button>
+      </Box>
 
       {/* Filtri */}
       <HStack mb={4} spacing={4}>
@@ -182,7 +252,7 @@ export default function Segnalazione() {
                 <Td>{s.id}</Td>
                 <Td>{new Date(s.data).toLocaleDateString("it-IT")}</Td>
                 <Td>{s.ora}</Td>
-                <Td>{s.categoria}</Td>
+                <Td>{s.nome_categoria}</Td>
                 <Td>{s.nome_sala}</Td>
                 <Td>{s.descrizione}</Td>
               </Tr>
