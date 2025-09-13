@@ -1,6 +1,7 @@
-// src/components/Navbar.tsx (estratto)
-const u = JSON.parse(localStorage.getItem("user") || "null");
-const isAdmin = !!u?.is_admin;
+// src/components/NavBar.tsx
+export default function NavBar() {
+  return null; // 👈 la navbar sparisce del tutto
+}
 
 
 
