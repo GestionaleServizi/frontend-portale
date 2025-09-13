@@ -7,7 +7,7 @@ import Categorie from "./pages/Categorie";
 import Clienti from "./pages/Clienti";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 
-function PrivateRoute({ children, ruolo }: { children: JSX.Element; ruolo: string }) {
+function PrivateRoute({ children, ruolo }: { children: JSX.Element; ruolo?: string }) {
   const { token, user } = useAuth();
   if (!token) return <Navigate to="/" replace />;
   if (ruolo && user?.ruolo !== ruolo) return <Navigate to="/" replace />;
