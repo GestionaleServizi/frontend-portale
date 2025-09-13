@@ -50,7 +50,7 @@ export default function Login() {
       if (data.user.ruolo === "admin") {
         nav("/dashboard", { replace: true });
       } else if (data.user.ruolo === "operatore") {
-        nav("/segnalazione", { replace: true });
+        nav("/segnalazioni-operatore", { replace: true });
       } else {
         nav("/login", { replace: true }); // fallback
       }
