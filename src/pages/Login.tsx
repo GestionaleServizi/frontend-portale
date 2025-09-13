@@ -47,7 +47,7 @@ export default function Login() {
       // 👇 Redirect in base al ruolo
       if (data.user.ruolo === "admin") {
         nav("/dashboard");
-      } else if (data.user.ruolo === "cliente") {
+      } else if (data.user.ruolo === "operatore") {
         nav("/segnalazioni-operatore");
       } else {
         toast({
