@@ -18,7 +18,7 @@ import {
 } from "@chakra-ui/react";
 import { useAuth } from "../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import logo from "../assets/logo.png"; // 👈 Assicurati che il logo sia in questa cartella
+import logo from "/servizinet_logo.png"; // 👈 Assicurati che il logo sia in questa cartella
 
 type Segnalazione = {
   id: number;
