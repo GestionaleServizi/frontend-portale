@@ -1,27 +1,27 @@
 import React, { useState } from "react";
 import {
-  Flex,
   Box,
+  Button,
+  Flex,
   FormControl,
   FormLabel,
-  Input,
-  Button,
   Heading,
-  Image,
+  Input,
   useToast,
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
-import logo from "/servizinet_logo.png"; // 👈 Assicurati che il file logo sia in src/assets
+import { useAuth } from "../hooks/useAuth";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { setUser, setToken } = useAuth();
   const toast = useToast();
   const nav = useNavigate();
 
-  const handleLogin = async () => {
-    setLoading(true);
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+
     try {
       const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/login`, {
         method: "POST",
@@ -35,81 +35,62 @@ export default function Login() {
 
       const data = await res.json();
 
-      // Salva token e user nel localStorage
+      setToken(data.token);
+      setUser(data.user);
       localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
 
       toast({
         title: "Login effettuato",
         status: "success",
-        duration: 2000,
-        isClosable: true,
       });
 
-      // Redirect in base al ruolo
+      // 👇 Redirect in base al ruolo
       if (data.user.ruolo === "admin") {
-        nav("/dashboard", { replace: true });
-      } else if (data.user.ruolo === "operatore") {
-        nav("/segnalazione", { replace: true });
+        nav("/dashboard");
+      } else if (data.user.ruolo === "cliente") {
+        nav("/segnalazioni-operatore");
       } else {
-        nav("/login", { replace: true }); // fallback
+        toast({
+          title: "Ruolo non riconosciuto",
+          status: "error",
+        });
       }
     } catch (err: any) {
       toast({
         title: "Errore login",
         description: err.message,
         status: "error",
-        duration: 3000,
-        isClosable: true,
       });
-    } finally {
-      setLoading(false);
     }
   };
 
   return (
     <Flex minH="100vh" align="center" justify="center" bg="gray.50">
-      <Box
-        bg="white"
-        p={8}
-        rounded="lg"
-        shadow="lg"
-        w={{ base: "90%", md: "400px" }}
-        textAlign="center"
-      >
-        {/* Logo */}
-        <Image src={logo} alt="ServiziNet" w="120px" mx="auto" mb={6} />
-
-        <Heading mb={6} fontSize="xl">
-          Accedi
-        </Heading>
-
-        <FormControl id="email" mb={4}>
-          <FormLabel>Email</FormLabel>
-          <Input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </FormControl>
-
-        <FormControl id="password" mb={6}>
-          <FormLabel>Password</FormLabel>
-          <Input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </FormControl>
-
-        <Button
-          colorScheme="blue"
-          w="full"
-          onClick={handleLogin}
-          isLoading={loading}
-        >
-          Accedi
-        </Button>
+      <Box bg="white" p={8} rounded="md" shadow="md" w="400px">
+        <Heading mb={6}>Login</Heading>
+        <form onSubmit={handleLogin}>
+          <FormControl mb={4}>
+            <FormLabel>Email</FormLabel>
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </FormControl>
+          <FormControl mb={4}>
+            <FormLabel>Password</FormLabel>
+            <Input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </FormControl>
+          <Button type="submit" colorScheme="blue" w="full">
+            Login
+          </Button>
+        </form>
       </Box>
     </Flex>
   );
