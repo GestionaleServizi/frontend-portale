@@ -1,73 +1,54 @@
 import React, { useEffect, useState } from "react";
 import {
   Box,
-  Flex,
-  Heading,
-  Text,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
   Button,
-  HStack,
-  Select,
+  Flex,
+  FormControl,
+  FormLabel,
   Input,
+  Select,
   Textarea,
+  Heading,
   useToast,
 } from "@chakra-ui/react";
 import { useAuth } from "../hooks/useAuth";
 
-type Segnalazione = {
-  id: number;
-  data: string;
-  ora: string;
-  descrizione: string;
-  categoria?: string;
-  sala?: string;
-};
-
 type Categoria = { id: number; nome_categoria: string };
+type Cliente = { id: number; nome_sala: string };
 
 export default function Segnalazione() {
   const { token, user } = useAuth();
-  const [segnalazioni, setSegnalazioni] = useState<Segnalazione[]>([]);
+  const [data, setData] = useState("");
+  const [ora, setOra] = useState("");
+  const [descrizione, setDescrizione] = useState("");
+  const [categoria, setCategoria] = useState("");
+  const [cliente, setCliente] = useState("");
   const [categorie, setCategorie] = useState<Categoria[]>([]);
-  const [filtroData, setFiltroData] = useState("");
-  const [filtroCategoria, setFiltroCategoria] = useState("");
-  const [formData, setFormData] = useState({
-    data: "",
-    ora: "",
-    descrizione: "",
-    categoria_id: "",
-  });
+  const [clienti, setClienti] = useState<Cliente[]>([]);
   const toast = useToast();
 
-  // Carica dati
-  const loadData = async () => {
-    try {
-      const [segRes, catRes] = await Promise.all([
-        fetch(`${import.meta.env.VITE_API_BASE_URL}/segnalazioni`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${import.meta.env.VITE_API_BASE_URL}/categorie`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-      ]);
-
-      setSegnalazioni(await segRes.json());
-      setCategorie(await catRes.json());
-    } catch {
-      toast({ title: "Errore caricamento dati", status: "error" });
-    }
-  };
-
+  // Carica categorie e clienti (solo admin ha bisogno dei clienti)
   useEffect(() => {
-    loadData();
-  }, []);
+    const fetchData = async () => {
+      try {
+        const catRes = await fetch(`${import.meta.env.VITE_API_BASE_URL}/categorie`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setCategorie(await catRes.json());
 
-  // Invia nuova segnalazione
+        if (user?.ruolo === "admin") {
+          const cliRes = await fetch(`${import.meta.env.VITE_API_BASE_URL}/clienti`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          setClienti(await cliRes.json());
+        }
+      } catch {
+        toast({ title: "Errore caricamento dati", status: "error" });
+      }
+    };
+    fetchData();
+  }, [token, user, toast]);
+
   const handleSubmit = async () => {
     try {
       const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/segnalazioni`, {
@@ -76,106 +57,52 @@ export default function Segnalazione() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          data,
+          ora,
+          descrizione,
+          categoria_id: categoria,
+          // 👉 Admin passa cliente_id, operatore no
+          cliente_id: user?.ruolo === "admin" ? cliente : undefined,
+        }),
       });
 
-      if (!res.ok) throw new Error("Errore inserimento");
+      if (!res.ok) throw new Error("Errore salvataggio");
 
-      toast({ title: "Segnalazione inserita", status: "success" });
-      setFormData({ data: "", ora: "", descrizione: "", categoria_id: "" });
-      loadData();
+      toast({ title: "Segnalazione salvata", status: "success" });
+      setData("");
+      setOra("");
+      setDescrizione("");
+      setCategoria("");
+      setCliente("");
     } catch {
       toast({ title: "Errore nel salvataggio", status: "error" });
     }
   };
 
-  // Filtri
-  const segnalazioniFiltrate = segnalazioni.filter((s) => {
-    const dataMatch = filtroData ? s.data.startsWith(filtroData) : true;
-    const catMatch = filtroCategoria ? s.categoria === filtroCategoria : true;
-    return dataMatch && catMatch;
-  });
-
-  // Export CSV
-  const esportaCSV = () => {
-    const header = ["ID", "Data", "Ora", "Categoria", "Sala", "Descrizione"];
-    const rows = segnalazioniFiltrate.map((s) => [
-      s.id,
-      new Date(s.data).toLocaleDateString("it-IT"),
-      s.ora,
-      s.categoria || "",
-      s.sala || "",
-      s.descrizione || "",
-    ]);
-    const csvContent =
-      "data:text/csv;charset=utf-8," +
-      [header, ...rows].map((e) => e.join(";")).join("\n");
-
-    const link = document.createElement("a");
-    link.setAttribute("href", encodeURI(csvContent));
-    link.setAttribute("download", "segnalazioni.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  // Export PDF
-  const esportaPDF = () => {
-    const printContent = `
-      <h2>Segnalazioni</h2>
-      <table border="1" cellspacing="0" cellpadding="4">
-        <thead>
-          <tr>
-            <th>ID</th><th>Data</th><th>Ora</th>
-            <th>Categoria</th><th>Sala</th><th>Descrizione</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${segnalazioniFiltrate
-            .map(
-              (s) => `
-            <tr>
-              <td>${s.id}</td>
-              <td>${new Date(s.data).toLocaleDateString("it-IT")}</td>
-              <td>${s.ora}</td>
-              <td>${s.categoria || ""}</td>
-              <td>${s.sala || ""}</td>
-              <td>${s.descrizione || ""}</td>
-            </tr>`
-            )
-            .join("")}
-        </tbody>
-      </table>
-    `;
-    const newWin = window.open("", "_blank");
-    newWin!.document.write(printContent);
-    newWin!.print();
-    newWin!.close();
-  };
-
   return (
-    <Flex minH="100vh" bg="gray.50" direction="column" p={8}>
-      <Heading mb={6}>📋 Nuova Segnalazione</Heading>
+    <Flex minH="100vh" align="center" justify="center" bg="gray.50" p={8}>
+      <Box bg="white" p={8} rounded="md" shadow="md" w="100%" maxW="600px">
+        <Heading size="lg" mb={6}>
+          📝 Nuova Segnalazione
+        </Heading>
 
-      {/* Form nuova segnalazione */}
-      <Box bg="white" p={6} borderRadius="lg" shadow="md" mb={6}>
-        <HStack spacing={4} mb={4}>
-          <Input
-            type="date"
-            value={formData.data}
-            onChange={(e) => setFormData({ ...formData, data: e.target.value })}
-          />
-          <Input
-            type="time"
-            value={formData.ora}
-            onChange={(e) => setFormData({ ...formData, ora: e.target.value })}
-          />
+        <FormControl mb={4} isRequired>
+          <FormLabel>Data</FormLabel>
+          <Input type="date" value={data} onChange={(e) => setData(e.target.value)} />
+        </FormControl>
+
+        <FormControl mb={4} isRequired>
+          <FormLabel>Ora</FormLabel>
+          <Input type="time" value={ora} onChange={(e) => setOra(e.target.value)} />
+        </FormControl>
+
+        <FormControl mb={4} isRequired>
+          <FormLabel>Categoria</FormLabel>
           <Select
             placeholder="Seleziona categoria"
-            value={formData.categoria_id}
-            onChange={(e) =>
-              setFormData({ ...formData, categoria_id: e.target.value })
-            }
+            value={categoria}
+            onChange={(e) => setCategoria(e.target.value)}
           >
             {categorie.map((c) => (
               <option key={c.id} value={c.id}>
@@ -183,80 +110,38 @@ export default function Segnalazione() {
               </option>
             ))}
           </Select>
-        </HStack>
-        <Textarea
-          placeholder="Descrizione"
-          value={formData.descrizione}
-          onChange={(e) =>
-            setFormData({ ...formData, descrizione: e.target.value })
-          }
-          mb={4}
-        />
+        </FormControl>
+
+        {/* 👇 Campo Cliente visibile solo agli admin */}
+        {user?.ruolo === "admin" && (
+          <FormControl mb={4} isRequired>
+            <FormLabel>Cliente</FormLabel>
+            <Select
+              placeholder="Seleziona cliente"
+              value={cliente}
+              onChange={(e) => setCliente(e.target.value)}
+            >
+              {clienti.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nome_sala}
+                </option>
+              ))}
+            </Select>
+          </FormControl>
+        )}
+
+        <FormControl mb={4} isRequired>
+          <FormLabel>Descrizione</FormLabel>
+          <Textarea
+            value={descrizione}
+            onChange={(e) => setDescrizione(e.target.value)}
+          />
+        </FormControl>
+
         <Button colorScheme="blue" onClick={handleSubmit}>
           Invia Segnalazione
         </Button>
       </Box>
-
-      {/* Filtri */}
-      <HStack mb={4} spacing={4}>
-        <Input
-          type="date"
-          value={filtroData}
-          onChange={(e) => setFiltroData(e.target.value)}
-        />
-        <Select
-          placeholder="Tutte le categorie"
-          value={filtroCategoria}
-          onChange={(e) => setFiltroCategoria(e.target.value)}
-        >
-          {categorie.map((c) => (
-            <option key={c.id} value={c.nome_categoria}>
-              {c.nome_categoria}
-            </option>
-          ))}
-        </Select>
-        <Button onClick={() => { setFiltroData(""); setFiltroCategoria(""); }}>
-          Reset Filtri
-        </Button>
-      </HStack>
-
-      {/* Tabella segnalazioni */}
-      <Box bg="white" p={6} borderRadius="lg" shadow="md">
-        <Table>
-          <Thead>
-            <Tr>
-              <Th>ID</Th>
-              <Th>Data</Th>
-              <Th>Ora</Th>
-              <Th>Categoria</Th>
-              <Th>Sala</Th>
-              <Th>Descrizione</Th>
-            </Tr>
-          </Thead>
-          <Tbody>
-            {segnalazioniFiltrate.map((s) => (
-              <Tr key={s.id}>
-                <Td>{s.id}</Td>
-                <Td>{new Date(s.data).toLocaleDateString("it-IT")}</Td>
-                <Td>{s.ora}</Td>
-                <Td>{s.categoria}</Td>
-                <Td>{s.sala}</Td>
-                <Td>{s.descrizione}</Td>
-              </Tr>
-            ))}
-          </Tbody>
-        </Table>
-      </Box>
-
-      {/* Bottoni export */}
-      <HStack spacing={6} justify="center" mt={4}>
-        <Button colorScheme="green" onClick={esportaCSV}>
-          ⬇️ Esporta CSV
-        </Button>
-        <Button colorScheme="blue" onClick={esportaPDF}>
-          ⬇️ Esporta PDF
-        </Button>
-      </HStack>
     </Flex>
   );
 }
