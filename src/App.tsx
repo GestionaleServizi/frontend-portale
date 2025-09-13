@@ -1,76 +1,33 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import React from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
 import DashboardAdmin from "./pages/DashboardAdmin";
-import SegnalazioneOperatore from "./pages/SegnalazioneOperatore"; // 👈 nuova pagina
-import Utenti from "./pages/Utenti";
-import Categorie from "./pages/Categorie";
-import Clienti from "./pages/Clienti";
-import { AuthProvider, useAuth } from "./hooks/useAuth";
+import ClientiPage from "./pages/ClientiPage";
+import CategoriePage from "./pages/CategoriePage";
+import UtentiPage from "./pages/UtentiPage";
+import Segnalazione from "./pages/Segnalazione";
 
-function PrivateRoute({ children, ruolo }: { children: JSX.Element; ruolo?: string }) {
-  const { token, user } = useAuth();
-  if (!token) return <Navigate to="/" replace />;
-  if (ruolo && user?.ruolo !== ruolo) return <Navigate to="/" replace />;
-  return children;
-}
-
-function App() {
+export default function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          {/* Login */}
-          <Route path="/" element={<Login />} />
+    <Router>
+      <Routes>
+        {/* Login */}
+        <Route path="/login" element={<Login />} />
 
-          {/* Dashboard Admin */}
-          <Route
-            path="/dashboard"
-            element={
-              <PrivateRoute ruolo="admin">
-                <DashboardAdmin />
-              </PrivateRoute>
-            }
-          />
+        {/* Dashboard Admin */}
+        <Route path="/dashboard" element={<DashboardAdmin />} />
 
-          {/* Segnalazioni Operatore */}
-          <Route
-            path="/segnalazioni-operatore"
-            element={
-              <PrivateRoute ruolo="operatore">
-                <SegnalazioneOperatore />
-              </PrivateRoute>
-            }
-          />
+        {/* Gestione anagrafiche */}
+        <Route path="/clienti" element={<ClientiPage />} />
+        <Route path="/categorie" element={<CategoriePage />} />
+        <Route path="/utenti" element={<UtentiPage />} />
 
-          {/* Gestione admin */}
-          <Route
-            path="/utenti"
-            element={
-              <PrivateRoute ruolo="admin">
-                <Utenti />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/categorie"
-            element={
-              <PrivateRoute ruolo="admin">
-                <Categorie />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/clienti"
-            element={
-              <PrivateRoute ruolo="admin">
-                <Clienti />
-              </PrivateRoute>
-            }
-          />
-        </Routes>
-      </Router>
-    </AuthProvider>
+        {/* Operatori → inserimento segnalazioni */}
+        <Route path="/segnalazione" element={<Segnalazione />} />
+
+        {/* Redirect default → login */}
+        <Route path="*" element={<Login />} />
+      </Routes>
+    </Router>
   );
 }
-
-export default App;
