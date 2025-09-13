@@ -1,154 +1,140 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { getCategorie, createSegnalazione } from "../api";  // ✅ export nominati
+import {
+  Box,
+  Flex,
+  Heading,
+  Input,
+  Select,
+  Textarea,
+  Button,
+  VStack,
+  useToast,
+} from "@chakra-ui/react";
+import { useAuth } from "../hooks/useAuth";
 
-type Categoria = {
-  id: number;
-  nome_categoria: string;
-};
+type Categoria = { id: number; nome_categoria: string };
+type Cliente = { id: number; nome_sala: string };
 
 export default function Segnalazione() {
-  const nav = useNavigate();
-
-  const [data, setData] = useState<string>(() =>
-    new Date().toISOString().slice(0, 10)
-  );
-  const [ora, setOra] = useState<string>(() => {
-    const d = new Date();
-    return `${String(d.getHours()).padStart(2, "0")}:${String(
-      d.getMinutes()
-    ).padStart(2, "0")}`;
-  });
+  const { token } = useAuth();
   const [categorie, setCategorie] = useState<Categoria[]>([]);
-  const [categoriaId, setCategoriaId] = useState<number | "">("");
-  const [descrizione, setDescrizione] = useState<string>("");
+  const [clienti, setClienti] = useState<Cliente[]>([]);
+  const [data, setData] = useState("");
+  const [ora, setOra] = useState("");
+  const [descrizione, setDescrizione] = useState("");
+  const [categoriaId, setCategoriaId] = useState("");
+  const [clienteId, setClienteId] = useState("");
+  const toast = useToast();
 
-  const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-
-  // 🔹 se non c’è token → redirect al login
+  // 🔹 Carica categorie e clienti
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      nav("/login", { replace: true });
-    }
-  }, [nav]);
-
-  // 🔹 carico categorie
-  useEffect(() => {
-    let alive = true;
-
-    async function run() {
+    const fetchData = async () => {
       try {
-        const rows = await getCategorie();
-        if (alive) setCategorie(rows);
-      } catch (err: any) {
-        setMsg("Errore nel caricamento categorie");
-        console.error(err);
+        const [catRes, cliRes] = await Promise.all([
+          fetch(`${import.meta.env.VITE_API_BASE_URL}/categorie`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch(`${import.meta.env.VITE_API_BASE_URL}/clienti`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
+
+        setCategorie(await catRes.json());
+        setClienti(await cliRes.json());
+      } catch {
+        toast({ title: "Errore caricamento dati", status: "error" });
       }
-    }
-
-    run();
-    return () => {
-      alive = false;
     };
-  }, []);
+    fetchData();
+  }, [token]);
 
-  // 🔹 submit segnalazione
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setMsg(null);
+  // 🔹 Invia segnalazione
+  const handleSubmit = async () => {
+    if (!data || !ora || !descrizione || !categoriaId || !clienteId) {
+      toast({ title: "Compila tutti i campi", status: "warning" });
+      return;
+    }
 
     try {
-      await createSegnalazione({
-        data,
-        ora,
-        categoria_id: categoriaId as number,
-        descrizione,
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/segnalazioni`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          data,
+          ora,
+          descrizione,
+          categoria_id: categoriaId,
+          cliente_id: clienteId,
+        }),
       });
-      setMsg("✅ Segnalazione salvata con successo");
+
+      if (!res.ok) throw new Error("Errore inserimento segnalazione");
+
+      toast({ title: "Segnalazione inviata", status: "success" });
+
+      // reset campi
+      setData("");
+      setOra("");
       setDescrizione("");
       setCategoriaId("");
-    } catch (err: any) {
-      setMsg("❌ Errore nel salvataggio della segnalazione");
-      console.error(err);
-    } finally {
-      setLoading(false);
+      setClienteId("");
+    } catch {
+      toast({ title: "Errore invio segnalazione", status: "error" });
     }
-  }
+  };
 
   return (
-    <div className="max-w-lg mx-auto mt-10 p-6 bg-gray-900 text-white rounded-2xl shadow-lg">
-      <h1 className="text-2xl font-bold mb-6">Nuova Segnalazione</h1>
-
-      {msg && <div className="mb-4 text-center">{msg}</div>}
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block mb-1">Data</label>
-          <input
+    <Flex minH="100vh" align="center" justify="center" bg="gray.50">
+      <Box bg="white" p={8} rounded="lg" shadow="md" w="full" maxW="md">
+        <Heading size="lg" mb={6} textAlign="center">
+          📝 Nuova Segnalazione
+        </Heading>
+        <VStack spacing={4}>
+          <Input
             type="date"
             value={data}
             onChange={(e) => setData(e.target.value)}
-            className="w-full p-2 rounded bg-gray-800 border border-gray-600"
           />
-        </div>
-
-        <div>
-          <label className="block mb-1">Ora</label>
-          <input
+          <Input
             type="time"
             value={ora}
             onChange={(e) => setOra(e.target.value)}
-            className="w-full p-2 rounded bg-gray-800 border border-gray-600"
           />
-        </div>
-
-        <div>
-          <label className="block mb-1">Categoria</label>
-          <select
+          <Select
+            placeholder="Seleziona categoria"
             value={categoriaId}
-            onChange={(e) => setCategoriaId(Number(e.target.value))}
-            className="w-full p-2 rounded bg-gray-800 border border-gray-600"
+            onChange={(e) => setCategoriaId(e.target.value)}
           >
-            <option value="">-- Seleziona --</option>
             {categorie.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.nome_categoria}
               </option>
             ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block mb-1">Descrizione</label>
-          <textarea
+          </Select>
+          <Select
+            placeholder="Seleziona cliente/sala"
+            value={clienteId}
+            onChange={(e) => setClienteId(e.target.value)}
+          >
+            {clienti.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nome_sala}
+              </option>
+            ))}
+          </Select>
+          <Textarea
+            placeholder="Descrizione"
             value={descrizione}
             onChange={(e) => setDescrizione(e.target.value)}
-            className="w-full p-2 rounded bg-gray-800 border border-gray-600"
-            rows={4}
-            placeholder="Descrivi la segnalazione..."
           />
-        </div>
-
-        <div className="flex justify-between">
-          <button
-            type="button"
-            onClick={() => nav("/dashboard")}
-            className="px-4 py-2 rounded bg-gray-600 hover:bg-gray-500"
-          >
-            Annulla
-          </button>
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-500 disabled:opacity-50"
-          >
-            {loading ? "Salvataggio..." : "Salva segnalazione"}
-          </button>
-        </div>
-      </form>
-    </div>
+          <Button colorScheme="blue" w="full" onClick={handleSubmit}>
+            Invia Segnalazione
+          </Button>
+        </VStack>
+      </Box>
+    </Flex>
   );
 }
