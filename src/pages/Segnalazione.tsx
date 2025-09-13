@@ -1,270 +1,96 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   Box,
-  Flex,
-  Heading,
-  Text,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
   Button,
-  HStack,
-  Select,
+  FormControl,
+  FormLabel,
   Input,
-  useToast,
+  Textarea,
+  Select,
 } from "@chakra-ui/react";
-import { useAuth } from "../hooks/useAuth";
+import axios from "axios";
 
-type Segnalazione = {
-  id: number;
-  data: string;
-  ora: string;
-  descrizione: string;
-  categoria?: string;
-};
-
-type Categoria = { id: number; nome_categoria: string };
-
-export default function SegnalazioneOperatore() {
-  const { token, user } = useAuth();
-  const [segnalazioni, setSegnalazioni] = useState<Segnalazione[]>([]);
-  const [categorie, setCategorie] = useState<Categoria[]>([]);
-  const [data, setData] = useState("");
-  const [ora, setOra] = useState("");
-  const [descrizione, setDescrizione] = useState("");
-  const [categoriaId, setCategoriaId] = useState("");
-  const [filtroData, setFiltroData] = useState("");
-  const [filtroCategoria, setFiltroCategoria] = useState("");
-  const toast = useToast();
-
-  // 📌 Carica segnalazioni e categorie
-  const loadData = async () => {
-    try {
-      const [segRes, catRes] = await Promise.all([
-        fetch(`${import.meta.env.VITE_API_BASE_URL}/segnalazioni-operatore`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${import.meta.env.VITE_API_BASE_URL}/categorie`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-      ]);
-
-      setSegnalazioni(await segRes.json());
-      setCategorie(await catRes.json());
-    } catch {
-      toast({ title: "Errore caricamento dati", status: "error" });
-    }
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  // 📌 Inserisci nuova segnalazione
-  const handleSubmit = async () => {
-    if (!data || !ora || !descrizione || !categoriaId) {
-      toast({ title: "Compila tutti i campi", status: "warning" });
-      return;
-    }
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/segnalazioni`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            data,
-            ora,
-            descrizione,
-            cliente_id: user?.id, // 📌 prende l’ID dell’utente loggato
-            categoria_id: categoriaId,
-          }),
-        }
-      );
-      if (!res.ok) throw new Error("Errore inserimento");
-      toast({ title: "Segnalazione inserita", status: "success" });
-      setData("");
-      setOra("");
-      setDescrizione("");
-      setCategoriaId("");
-      loadData();
-    } catch {
-      toast({ title: "Errore inserimento segnalazione", status: "error" });
-    }
-  };
-
-  // 📌 Filtri
-  const segnalazioniFiltrate = segnalazioni.filter((s) => {
-    const dataMatch = filtroData ? s.data.startsWith(filtroData) : true;
-    const catMatch = filtroCategoria ? s.categoria === filtroCategoria : true;
-    return dataMatch && catMatch;
+export default function Segnalazione() {
+  const [formData, setFormData] = useState({
+    data: "",
+    ora: "",
+    descrizione: "",
+    cliente_id: "",
+    categoria_id: "",
   });
 
-  // 📌 Export CSV
-  const esportaCSV = () => {
-    const header = ["ID", "Data", "Ora", "Categoria", "Descrizione"];
-    const rows = segnalazioniFiltrate.map((s) => [
-      s.id,
-      new Date(s.data).toLocaleDateString("it-IT"),
-      s.ora,
-      s.categoria || "",
-      s.descrizione || "",
-    ]);
-    const csvContent =
-      "data:text/csv;charset=utf-8," +
-      [header, ...rows].map((e) => e.join(";")).join("\n");
-    const link = document.createElement("a");
-    link.setAttribute("href", encodeURI(csvContent));
-    link.setAttribute("download", "segnalazioni_operatore.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // 📌 Export PDF (usa stampa nativa browser)
-  const esportaPDF = () => {
-    const printContent = `
-      <h2>Le mie segnalazioni</h2>
-      <table border="1" cellspacing="0" cellpadding="4">
-        <thead>
-          <tr>
-            <th>ID</th><th>Data</th><th>Ora</th><th>Categoria</th><th>Descrizione</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${segnalazioniFiltrate
-            .map(
-              (s) => `
-            <tr>
-              <td>${s.id}</td>
-              <td>${new Date(s.data).toLocaleDateString("it-IT")}</td>
-              <td>${s.ora}</td>
-              <td>${s.categoria || ""}</td>
-              <td>${s.descrizione || ""}</td>
-            </tr>`
-            )
-            .join("")}
-        </tbody>
-      </table>
-    `;
-    const newWin = window.open("", "_blank");
-    newWin!.document.write(printContent);
-    newWin!.print();
-    newWin!.close();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const { data, ora, descrizione, cliente_id, categoria_id } = formData;
+
+      // ✅ Controllo campi obbligatori
+      if (!data || !ora || !descrizione || !cliente_id || !categoria_id) {
+        alert("Tutti i campi sono obbligatori!");
+        return;
+      }
+
+      // ✅ Invio dati al backend
+      const res = await axios.post("/api/segnalazioni", {
+        data,
+        ora,
+        descrizione,
+        cliente_id,
+        categoria_id,
+      });
+
+      console.log("Risposta backend:", res.data);
+      alert("Segnalazione inviata con successo!");
+    } catch (error) {
+      console.error("Errore invio segnalazione:", error);
+      alert("Errore nell'invio della segnalazione");
+    }
   };
 
   return (
-    <Flex minH="100vh" bg="gray.50" direction="column" p={8}>
-      <Heading mb={6}>📌 Segnalazioni - {user?.nome_sala}</Heading>
+    <Box p={6}>
+      <form onSubmit={handleSubmit}>
+        <FormControl mb={3}>
+          <FormLabel>Data</FormLabel>
+          <Input type="date" name="data" value={formData.data} onChange={handleChange} />
+        </FormControl>
 
-      {/* Form inserimento */}
-      <Box bg="white" p={6} borderRadius="lg" shadow="md" mb={6}>
-        <Heading size="md" mb={4}>
-          ➕ Inserisci segnalazione
-        </Heading>
-        <HStack spacing={4} mb={4}>
-          <Input
-            type="date"
-            value={data}
-            onChange={(e) => setData(e.target.value)}
-          />
-          <Input
-            type="time"
-            value={ora}
-            onChange={(e) => setOra(e.target.value)}
-          />
-          <Select
-            placeholder="Seleziona categoria"
-            value={categoriaId}
-            onChange={(e) => setCategoriaId(e.target.value)}
-          >
-            {categorie.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nome_categoria}
-              </option>
-            ))}
+        <FormControl mb={3}>
+          <FormLabel>Ora</FormLabel>
+          <Input type="time" name="ora" value={formData.ora} onChange={handleChange} />
+        </FormControl>
+
+        <FormControl mb={3}>
+          <FormLabel>Descrizione</FormLabel>
+          <Textarea name="descrizione" value={formData.descrizione} onChange={handleChange} />
+        </FormControl>
+
+        <FormControl mb={3}>
+          <FormLabel>Cliente</FormLabel>
+          <Select name="cliente_id" value={formData.cliente_id} onChange={handleChange}>
+            <option value="">Seleziona cliente</option>
+            <option value="1">Cliente 1</option>
+            <option value="2">Cliente 2</option>
           </Select>
-        </HStack>
-        <Input
-          placeholder="Descrizione"
-          value={descrizione}
-          onChange={(e) => setDescrizione(e.target.value)}
-          mb={4}
-        />
-        <Button colorScheme="blue" onClick={handleSubmit}>
-          Inserisci
-        </Button>
-      </Box>
+        </FormControl>
 
-      {/* Filtri */}
-      <HStack mb={4} spacing={4}>
-        <Input
-          type="date"
-          value={filtroData}
-          onChange={(e) => setFiltroData(e.target.value)}
-        />
-        <Select
-          placeholder="Tutte le categorie"
-          value={filtroCategoria}
-          onChange={(e) => setFiltroCategoria(e.target.value)}
-        >
-          {categorie.map((c) => (
-            <option key={c.id} value={c.nome_categoria}>
-              {c.nome_categoria}
-            </option>
-          ))}
-        </Select>
-        <Button
-          onClick={() => {
-            setFiltroData("");
-            setFiltroCategoria("");
-          }}
-        >
-          Reset Filtri
-        </Button>
-      </HStack>
+        <FormControl mb={3}>
+          <FormLabel>Categoria</FormLabel>
+          <Select name="categoria_id" value={formData.categoria_id} onChange={handleChange}>
+            <option value="">Seleziona categoria</option>
+            <option value="1">Categoria 1</option>
+            <option value="2">Categoria 2</option>
+          </Select>
+        </FormControl>
 
-      {/* Tabella storico */}
-      <Box bg="white" p={6} borderRadius="lg" shadow="md">
-        <Table>
-          <Thead>
-            <Tr>
-              <Th>ID</Th>
-              <Th>Data</Th>
-              <Th>Ora</Th>
-              <Th>Categoria</Th>
-              <Th>Descrizione</Th>
-            </Tr>
-          </Thead>
-          <Tbody>
-            {segnalazioniFiltrate.map((s) => (
-              <Tr key={s.id}>
-                <Td>{s.id}</Td>
-                <Td>{new Date(s.data).toLocaleDateString("it-IT")}</Td>
-                <Td>{s.ora}</Td>
-                <Td>{s.categoria}</Td>
-                <Td>{s.descrizione}</Td>
-              </Tr>
-            ))}
-          </Tbody>
-        </Table>
-      </Box>
-
-      {/* Bottoni Export */}
-      <HStack spacing={6} justify="center" mt={4}>
-        <Button colorScheme="green" onClick={esportaCSV}>
-          ⬇️ Esporta CSV
+        <Button type="submit" colorScheme="blue">
+          Invia Segnalazione
         </Button>
-        <Button colorScheme="blue" onClick={esportaPDF}>
-          ⬇️ Esporta PDF
-        </Button>
-      </HStack>
-    </Flex>
+      </form>
+    </Box>
   );
 }
