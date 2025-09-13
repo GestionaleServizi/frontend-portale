@@ -1,23 +1,24 @@
 import React, { useEffect, useState } from "react";
 import {
   Box,
+  Button,
   Flex,
   Heading,
-  Text,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  Button,
   HStack,
-  Select,
   Input,
+  Select,
+  Table,
+  Tbody,
+  Td,
+  Th,
+  Thead,
+  Tr,
+  Text,
   useToast,
-  Image,
 } from "@chakra-ui/react";
 import { useAuth } from "../hooks/useAuth";
+import { useNavigate } from "react-router-dom";
+import logo from "../assets/logo.png"; // 👈 Assicurati che il logo sia in questa cartella
 
 type Segnalazione = {
   id: number;
@@ -34,11 +35,16 @@ export default function Segnalazione() {
   const { token, user, logout } = useAuth();
   const [segnalazioni, setSegnalazioni] = useState<Segnalazione[]>([]);
   const [categorie, setCategorie] = useState<Categoria[]>([]);
+  const [data, setData] = useState("");
+  const [ora, setOra] = useState("");
   const [descrizione, setDescrizione] = useState("");
   const [categoriaId, setCategoriaId] = useState("");
+  const [filtroData, setFiltroData] = useState("");
+  const [filtroCategoria, setFiltroCategoria] = useState("");
   const toast = useToast();
+  const nav = useNavigate();
 
-  // 📌 Carica segnalazioni e categorie
+  // 📌 Carica dati segnalazioni + categorie
   const loadData = async () => {
     try {
       const [segRes, catRes] = await Promise.all([
@@ -61,17 +67,8 @@ export default function Segnalazione() {
     loadData();
   }, []);
 
-  // 📌 Inserisci nuova segnalazione
+  // 📌 Invia nuova segnalazione
   const handleSubmit = async () => {
-    if (!descrizione || !categoriaId) {
-      toast({ title: "Compila tutti i campi", status: "warning" });
-      return;
-    }
-
-    const oggi = new Date();
-    const data = oggi.toISOString().split("T")[0];
-    const ora = oggi.toTimeString().slice(0, 5);
-
     try {
       const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/segnalazioni`, {
         method: "POST",
@@ -79,34 +76,47 @@ export default function Segnalazione() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ data, ora, descrizione, categoria_id: categoriaId }),
+        body: JSON.stringify({
+          data,
+          ora,
+          descrizione,
+          categoria_id: categoriaId,
+        }),
       });
 
-      if (!res.ok) throw new Error("Errore inserimento");
+      if (!res.ok) throw new Error("Errore nel salvataggio");
+      toast({ title: "Segnalazione inviata", status: "success" });
+      setData("");
+      setOra("");
       setDescrizione("");
       setCategoriaId("");
-      toast({ title: "Segnalazione inserita", status: "success" });
       loadData();
     } catch {
-      toast({ title: "Errore nell'inserimento", status: "error" });
+      toast({ title: "Errore nel salvataggio", status: "error" });
     }
   };
 
-  // 📌 Esporta CSV
+  // 📌 Filtri lato frontend
+  const segnalazioniFiltrate = segnalazioni.filter((s) => {
+    const matchData = filtroData ? s.data.startsWith(filtroData) : true;
+    const matchCat = filtroCategoria ? s.categoria === filtroCategoria : true;
+    return matchData && matchCat;
+  });
+
+  // 📌 Export CSV
   const esportaCSV = () => {
     const header = ["ID", "Data", "Ora", "Categoria", "Sala", "Descrizione"];
-    const rows = segnalazioni.map((s) => [
+    const rows = segnalazioniFiltrate.map((s) => [
       s.id,
       new Date(s.data).toLocaleDateString("it-IT"),
       s.ora,
-      s.categoria || "",
-      s.sala || "",
-      s.descrizione || "",
+      s.categoria,
+      s.sala,
+      s.descrizione,
     ]);
     const csvContent =
       "data:text/csv;charset=utf-8," +
       [header, ...rows].map((e) => e.join(";")).join("\n");
-
     const link = document.createElement("a");
     link.setAttribute("href", encodeURI(csvContent));
     link.setAttribute("download", "segnalazioni.csv");
@@ -115,7 +125,7 @@ export default function Segnalazione() {
     document.body.removeChild(link);
   };
 
-  // 📌 Esporta PDF (stampa browser)
+  // 📌 Export PDF (stampa browser)
   const esportaPDF = () => {
     const printContent = `
       <h2>Segnalazioni</h2>
@@ -127,16 +137,16 @@ export default function Segnalazione() {
           </tr>
         </thead>
         <tbody>
-          ${segnalazioni
+          ${segnalazioniFiltrate
             .map(
               (s) => `
             <tr>
               <td>${s.id}</td>
               <td>${new Date(s.data).toLocaleDateString("it-IT")}</td>
               <td>${s.ora}</td>
-              <td>${s.categoria || ""}</td>
-              <td>${s.sala || ""}</td>
-              <td>${s.descrizione || ""}</td>
+              <td>${s.categoria}</td>
+              <td>${s.sala}</td>
+              <td>${s.descrizione}</td>
             </tr>`
             )
             .join("")}
@@ -151,33 +161,19 @@ export default function Segnalazione() {
 
   return (
     <Flex minH="100vh" bg="gray.50" direction="column" align="center" p={8}>
-      {/* Header con logo + info utente */}
-      <Flex w="100%" justify="space-between" align="center" mb={6}>
-        <Image src="/logo.png" alt="Logo" boxSize="60px" mx="auto" />
-        <Box textAlign="right">
-          <Text fontSize="sm">👤 {user?.email}</Text>
-          <Text fontSize="sm">🏢 {user?.sala}</Text>
-        </Box>
-        <Button colorScheme="red" size="sm" onClick={logout}>
-          Logout
-        </Button>
-      </Flex>
+      {/* Logo e intestazione */}
+      <Box textAlign="center" mb={6}>
+        <img src={logo} alt="Logo" style={{ width: "100px", margin: "0 auto" }} />
+        <Heading size="lg" mt={2}>Nuova Segnalazione</Heading>
+        <Text mt={2}>👤 {user?.email} | 🏢 {user?.sala || "Sala non disponibile"}</Text>
+        <Button mt={2} colorScheme="red" onClick={logout}>Logout</Button>
+      </Box>
 
-      {/* Form al centro */}
-      <Box
-        bg="white"
-        p={6}
-        borderRadius="lg"
-        shadow="md"
-        w="100%"
-        maxW="600px"
-        textAlign="center"
-        mb={8}
-      >
-        <Heading size="md" mb={4}>
-          ➕ Nuova Segnalazione
-        </Heading>
-        <HStack spacing={4} mb={4}>
+      {/* Form centrato */}
+      <Box bg="white" p={6} borderRadius="lg" shadow="md" mb={6} width="100%" maxW="600px">
+        <VStack spacing={4}>
+          <Input type="date" value={data} onChange={(e) => setData(e.target.value)} />
+          <Input type="time" value={ora} onChange={(e) => setOra(e.target.value)} />
           <Select
             placeholder="Seleziona categoria"
             value={categoriaId}
@@ -194,17 +190,36 @@ export default function Segnalazione() {
             value={descrizione}
             onChange={(e) => setDescrizione(e.target.value)}
           />
-        </HStack>
-        <Button colorScheme="blue" onClick={handleSubmit}>
-          Invia
-        </Button>
+          <Button colorScheme="blue" onClick={handleSubmit}>
+            Invia Segnalazione
+          </Button>
+        </VStack>
       </Box>
 
-      {/* Storico segnalazioni */}
-      <Box bg="white" p={6} borderRadius="lg" shadow="md" w="100%" maxW="900px">
-        <Heading size="md" mb={4}>
-          📋 Storico Segnalazioni
-        </Heading>
+      {/* Filtri e storico */}
+      <HStack spacing={4} mb={4}>
+        <Input
+          type="date"
+          value={filtroData}
+          onChange={(e) => setFiltroData(e.target.value)}
+        />
+        <Select
+          placeholder="Tutte le categorie"
+          value={filtroCategoria}
+          onChange={(e) => setFiltroCategoria(e.target.value)}
+        >
+          {categorie.map((c) => (
+            <option key={c.id} value={c.nome_categoria}>
+              {c.nome_categoria}
+            </option>
+          ))}
+        </Select>
+        <Button onClick={() => { setFiltroData(""); setFiltroCategoria(""); }}>
+          Reset Filtri
+        </Button>
+      </HStack>
+
+      <Box bg="white" p={6} borderRadius="lg" shadow="md" width="100%" maxW="900px">
         <Table>
           <Thead>
             <Tr>
@@ -217,7 +232,7 @@ export default function Segnalazione() {
             </Tr>
           </Thead>
           <Tbody>
-            {segnalazioni.map((s) => (
+            {segnalazioniFiltrate.map((s) => (
               <Tr key={s.id}>
                 <Td>{s.id}</Td>
                 <Td>{new Date(s.data).toLocaleDateString("it-IT")}</Td>
@@ -229,17 +244,13 @@ export default function Segnalazione() {
             ))}
           </Tbody>
         </Table>
-
-        {/* Export buttons */}
-        <HStack spacing={6} justify="center" mt={4}>
-          <Button colorScheme="green" onClick={esportaCSV}>
-            ⬇️ Esporta CSV
-          </Button>
-          <Button colorScheme="blue" onClick={esportaPDF}>
-            ⬇️ Esporta PDF
-          </Button>
-        </HStack>
       </Box>
+
+      {/* Export */}
+      <HStack spacing={6} mt={4}>
+        <Button colorScheme="green" onClick={esportaCSV}>⬇️ Esporta CSV</Button>
+        <Button colorScheme="blue" onClick={esportaPDF}>⬇️ Esporta PDF</Button>
+      </HStack>
     </Flex>
   );
 }
