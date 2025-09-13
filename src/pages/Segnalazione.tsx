@@ -3,141 +3,131 @@ import {
   Box,
   Button,
   Flex,
-  FormControl,
-  FormLabel,
+  Heading,
   Input,
   Select,
   Textarea,
-  Heading,
   useToast,
 } from "@chakra-ui/react";
 import { useAuth } from "../hooks/useAuth";
 
-type Categoria = { id: number; nome_categoria: string };
-type Cliente = { id: number; nome_sala: string };
-
 export default function Segnalazione() {
-  const { token, user } = useAuth();
+  const { token, user } = useAuth(); // 👈 recupero user con ruolo e cliente_id
   const [data, setData] = useState("");
   const [ora, setOra] = useState("");
   const [descrizione, setDescrizione] = useState("");
-  const [categoria, setCategoria] = useState("");
-  const [cliente, setCliente] = useState("");
-  const [categorie, setCategorie] = useState<Categoria[]>([]);
-  const [clienti, setClienti] = useState<Cliente[]>([]);
+  const [categorie, setCategorie] = useState<any[]>([]);
+  const [categoriaId, setCategoriaId] = useState("");
+  const [clienti, setClienti] = useState<any[]>([]);
+  const [clienteId, setClienteId] = useState(""); // 👈 per admin
   const toast = useToast();
 
-  // Carica categorie e clienti (solo admin ha bisogno dei clienti)
+  // Carica categorie e (solo se admin) clienti
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const catRes = await fetch(`${import.meta.env.VITE_API_BASE_URL}/categorie`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setCategorie(await catRes.json());
+    fetch(`${import.meta.env.VITE_API_BASE_URL}/categorie`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.json())
+      .then(setCategorie);
 
-        if (user?.ruolo === "admin") {
-          const cliRes = await fetch(`${import.meta.env.VITE_API_BASE_URL}/clienti`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          setClienti(await cliRes.json());
-        }
-      } catch {
-        toast({ title: "Errore caricamento dati", status: "error" });
-      }
-    };
-    fetchData();
-  }, [token, user, toast]);
+    if (user?.ruolo === "admin") {
+      fetch(`${import.meta.env.VITE_API_BASE_URL}/clienti`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((res) => res.json())
+        .then(setClienti);
+    }
+  }, [token, user]);
 
   const handleSubmit = async () => {
     try {
+      const payload: any = {
+        data,
+        ora,
+        descrizione,
+        categoria_id: categoriaId,
+      };
+
+      // 👉 Solo admin passa clienteId manualmente
+      if (user?.ruolo === "admin") {
+        payload.cliente_id = clienteId;
+      }
+
       const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/segnalazioni`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          data,
-          ora,
-          descrizione,
-          categoria_id: categoria,
-          // 👉 Admin passa cliente_id, operatore no
-          cliente_id: user?.ruolo === "admin" ? cliente : undefined,
-        }),
+        body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error("Errore salvataggio");
+      if (!res.ok) throw new Error("Errore nel salvataggio");
 
-      toast({ title: "Segnalazione salvata", status: "success" });
+      toast({ title: "Segnalazione inserita", status: "success" });
+
+      // reset form
       setData("");
       setOra("");
       setDescrizione("");
-      setCategoria("");
-      setCliente("");
-    } catch {
+      setCategoriaId("");
+      setClienteId("");
+    } catch (err) {
       toast({ title: "Errore nel salvataggio", status: "error" });
     }
   };
 
   return (
-    <Flex minH="100vh" align="center" justify="center" bg="gray.50" p={8}>
-      <Box bg="white" p={8} rounded="md" shadow="md" w="100%" maxW="600px">
-        <Heading size="lg" mb={6}>
-          📝 Nuova Segnalazione
-        </Heading>
+    <Flex direction="column" p={6} bg="gray.50" minH="100vh">
+      <Heading mb={6}>Nuova Segnalazione</Heading>
+      <Box bg="white" p={6} borderRadius="lg" shadow="md">
+        <Input
+          type="date"
+          value={data}
+          onChange={(e) => setData(e.target.value)}
+          mb={3}
+        />
+        <Input
+          type="time"
+          value={ora}
+          onChange={(e) => setOra(e.target.value)}
+          mb={3}
+        />
+        <Select
+          placeholder="Seleziona categoria"
+          value={categoriaId}
+          onChange={(e) => setCategoriaId(e.target.value)}
+          mb={3}
+        >
+          {categorie.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.nome_categoria}
+            </option>
+          ))}
+        </Select>
 
-        <FormControl mb={4} isRequired>
-          <FormLabel>Data</FormLabel>
-          <Input type="date" value={data} onChange={(e) => setData(e.target.value)} />
-        </FormControl>
-
-        <FormControl mb={4} isRequired>
-          <FormLabel>Ora</FormLabel>
-          <Input type="time" value={ora} onChange={(e) => setOra(e.target.value)} />
-        </FormControl>
-
-        <FormControl mb={4} isRequired>
-          <FormLabel>Categoria</FormLabel>
+        {/* 👇 Campo visibile solo agli admin */}
+        {user?.ruolo === "admin" && (
           <Select
-            placeholder="Seleziona categoria"
-            value={categoria}
-            onChange={(e) => setCategoria(e.target.value)}
+            placeholder="Seleziona cliente"
+            value={clienteId}
+            onChange={(e) => setClienteId(e.target.value)}
+            mb={3}
           >
-            {categorie.map((c) => (
+            {clienti.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.nome_categoria}
+                {c.nome_sala}
               </option>
             ))}
           </Select>
-        </FormControl>
-
-        {/* 👇 Campo Cliente visibile solo agli admin */}
-        {user?.ruolo === "admin" && (
-          <FormControl mb={4} isRequired>
-            <FormLabel>Cliente</FormLabel>
-            <Select
-              placeholder="Seleziona cliente"
-              value={cliente}
-              onChange={(e) => setCliente(e.target.value)}
-            >
-              {clienti.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nome_sala}
-                </option>
-              ))}
-            </Select>
-          </FormControl>
         )}
 
-        <FormControl mb={4} isRequired>
-          <FormLabel>Descrizione</FormLabel>
-          <Textarea
-            value={descrizione}
-            onChange={(e) => setDescrizione(e.target.value)}
-          />
-        </FormControl>
-
+        <Textarea
+          placeholder="Descrizione"
+          value={descrizione}
+          onChange={(e) => setDescrizione(e.target.value)}
+          mb={3}
+        />
         <Button colorScheme="blue" onClick={handleSubmit}>
           Invia Segnalazione
         </Button>
