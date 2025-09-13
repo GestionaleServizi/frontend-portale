@@ -1,27 +1,28 @@
 // src/pages/Login.tsx
-import { useState } from "react";
+import React, { useState } from "react";
 import {
   Box,
   Button,
   Flex,
-  FormControl,
-  FormLabel,
-  Input,
   Heading,
+  Input,
+  Stack,
   useToast,
+  Image,
 } from "@chakra-ui/react";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const { login } = useAuth();
+  const nav = useNavigate();
   const toast = useToast();
-  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     try {
       const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/login`, {
         method: "POST",
@@ -29,68 +30,67 @@ export default function Login() {
         body: JSON.stringify({ email, password }),
       });
 
-      if (!res.ok) throw new Error("Credenziali non valide");
+      if (res.ok) {
+        const data = await res.json();
+        login(data.token, data.user);
 
-      const data = await res.json();
-
-      // Salva token e utente nel contesto
-      login(data.token, data.user);
-
-      toast({ title: "Login effettuato", status: "success" });
-
-      // Reindirizzamento in base al ruolo
-      if (data.user.ruolo === "admin") {
-        navigate("/dashboard");
-      } else if (data.user.ruolo === "operatore") {
-        navigate("/segnalazioni-operatore");
+        // 👇 Redirect in base al ruolo
+        if (data.user.ruolo === "admin") {
+          nav("/dashboard");
+        } else if (data.user.ruolo === "operatore") {
+          nav("/segnalazioni-operatore");
+        } else {
+          toast({ title: "Ruolo non riconosciuto", status: "error" });
+        }
       } else {
-        navigate("/");
+        toast({ title: "Credenziali non valide", status: "error" });
       }
     } catch (err) {
-      console.error(err);
-      toast({
-        title: "Errore login",
-        description: String(err),
-        status: "error",
-      });
+      console.error("Errore login:", err);
+      toast({ title: "Errore login", description: String(err), status: "error" });
     }
   };
 
   return (
     <Flex minH="100vh" align="center" justify="center" bg="gray.50">
       <Box
-        p={8}
-        maxW="400px"
+        p={10} // 👈 lascio come l’avevi tu (non lo stringo)
+        maxW="500px" // 👈 mantengo la larghezza originale
         borderWidth={1}
         borderRadius="lg"
-        boxShadow="lg"
         bg="white"
+        boxShadow="lg"
+        w="100%"
       >
-        <Heading mb={6} textAlign="center">
+        {/* 👇 logo grande come lo avevi */}
+        <Flex justify="center" mb={6}>
+          <Image src="/servizinet_logo.png" alt="Logo" boxSize="120px" />
+        </Flex>
+
+        <Heading mb={6} textAlign="center" size="lg">
           Accedi
         </Heading>
+
         <form onSubmit={handleSubmit}>
-          <FormControl mb={4}>
-            <FormLabel>Email</FormLabel>
+          <Stack spacing={4}>
             <Input
               type="email"
+              placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
             />
-          </FormControl>
-          <FormControl mb={4}>
-            <FormLabel>Password</FormLabel>
             <Input
               type="password"
+              placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
-          </FormControl>
-          <Button type="submit" colorScheme="blue" width="full">
-            Accedi
-          </Button>
+            <Button type="submit" colorScheme="blue" w="full">
+              Accedi
+            </Button>
+          </Stack>
         </form>
       </Box>
     </Flex>
