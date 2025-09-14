@@ -39,7 +39,7 @@ export default function Segnalazione() {
   const [filtroCategoria, setFiltroCategoria] = useState("");
   const toast = useToast();
 
-  // 📌 Carica dati
+  // Carica dati
   const loadData = async () => {
     try {
       const [segRes, catRes] = await Promise.all([
@@ -65,8 +65,8 @@ export default function Segnalazione() {
     loadData();
   }, []);
 
-  // 📌 Filtri
-  const segnalazioniFiltrate = (Array.isArray(segnalazioni) ? segnalazioni : []).filter((s) => {
+  // Filtri
+  const segnalazioniFiltrate = (segnalazioni || []).filter((s) => {
     const dataMatch = filtroData ? s.data.startsWith(filtroData) : true;
     const catMatch = filtroCategoria ? s.categoria === filtroCategoria : true;
     return dataMatch && catMatch;
@@ -74,7 +74,7 @@ export default function Segnalazione() {
 
   return (
     <Flex minH="100vh" bg="gray.50" direction="column" p={8}>
-      {/* Header */}
+      {/* Header con logo, utente e sala */}
       <VStack spacing={2} mb={6}>
         <img src="/logo.png" alt="Logo" width="120" />
         <Heading>Nuova Segnalazione</Heading>
@@ -98,18 +98,23 @@ export default function Segnalazione() {
           value={filtroCategoria}
           onChange={(e) => setFiltroCategoria(e.target.value)}
         >
-          {(Array.isArray(categorie) ? categorie : []).map((c) => (
+          {(categorie || []).map((c) => (
             <option key={c.id} value={c.nome_categoria}>
               {c.nome_categoria}
             </option>
           ))}
         </Select>
-        <Button onClick={() => { setFiltroData(""); setFiltroCategoria(""); }}>
+        <Button
+          onClick={() => {
+            setFiltroData("");
+            setFiltroCategoria("");
+          }}
+        >
           Reset Filtri
         </Button>
       </HStack>
 
-      {/* Tabella */}
+      {/* Tabella segnalazioni */}
       <Box bg="white" p={6} borderRadius="lg" shadow="md">
         <Table>
           <Thead>
@@ -123,7 +128,7 @@ export default function Segnalazione() {
             </Tr>
           </Thead>
           <Tbody>
-            {(Array.isArray(segnalazioniFiltrate) ? segnalazioniFiltrate : []).map((s) => (
+            {(segnalazioniFiltrate || []).map((s) => (
               <Tr key={s.id}>
                 <Td>{s.id}</Td>
                 <Td>{new Date(s.data).toLocaleDateString("it-IT")}</Td>
