@@ -29,7 +29,7 @@ type Segnalazione = {
   sala?: string;
 };
 
-type Categoria = { id: number; nome_categoria: string };
+type Categoria = { id: number; nome_categoria?: string; nome?: string };
 
 export default function Segnalazione() {
   const { token, user, logout } = useAuth();
@@ -99,8 +99,8 @@ export default function Segnalazione() {
           onChange={(e) => setFiltroCategoria(e.target.value)}
         >
           {(categorie || []).map((c) => (
-            <option key={c.id} value={c.nome_categoria}>
-              {c.nome_categoria}
+            <option key={c.id} value={c.nome_categoria || c.nome}>
+              {c.nome_categoria || c.nome}
             </option>
           ))}
         </Select>
