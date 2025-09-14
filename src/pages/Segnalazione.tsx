@@ -29,7 +29,7 @@ type Segnalazione = {
   sala?: string;
 };
 
-type Categoria = { id: number; nome_categoria: string };
+type Categoria = { id: number; nome_categoria?: string; nome?: string };
 
 export default function Segnalazione() {
   const { token, user, logout } = useAuth();
@@ -39,7 +39,7 @@ export default function Segnalazione() {
   const [filtroCategoria, setFiltroCategoria] = useState("");
   const toast = useToast();
 
-  // Carica dati
+  // 📌 Carica dati
   const loadData = async () => {
     try {
       const [segRes, catRes] = await Promise.all([
@@ -65,7 +65,7 @@ export default function Segnalazione() {
     loadData();
   }, []);
 
-  // Filtri
+  // 📌 Filtri
   const segnalazioniFiltrate = (segnalazioni || []).filter((s) => {
     const dataMatch = filtroData ? s.data.startsWith(filtroData) : true;
     const catMatch = filtroCategoria ? s.categoria === filtroCategoria : true;
@@ -74,7 +74,7 @@ export default function Segnalazione() {
 
   return (
     <Flex minH="100vh" bg="gray.50" direction="column" p={8}>
-      {/* Header con logo, utente e sala */}
+      {/* Header */}
       <VStack spacing={2} mb={6}>
         <img src="/logo.png" alt="Logo" width="120" />
         <Heading>Nuova Segnalazione</Heading>
@@ -99,8 +99,8 @@ export default function Segnalazione() {
           onChange={(e) => setFiltroCategoria(e.target.value)}
         >
           {(categorie || []).map((c) => (
-            <option key={c.id} value={c.nome_categoria}>
-              {c.nome_categoria}
+            <option key={c.id} value={c.nome_categoria || c.nome}>
+              {c.nome_categoria || c.nome}
             </option>
           ))}
         </Select>
