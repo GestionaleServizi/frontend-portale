@@ -39,7 +39,7 @@ export default function Segnalazione() {
   const [filtroCategoria, setFiltroCategoria] = useState("");
   const toast = useToast();
 
-  // 🔹 Carica dati
+  // 📌 Carica segnalazioni e categorie
   const loadData = async () => {
     try {
       const [segRes, catRes] = await Promise.all([
@@ -54,11 +54,10 @@ export default function Segnalazione() {
       const segData = await segRes.json();
       const catData = await catRes.json();
 
-      console.log("✅ Segnalazioni:", segData);
-      console.log("✅ Categorie:", catData);
+      console.log("Categorie ricevute:", catData); // 👈 debug
 
-      setSegnalazioni(Array.isArray(segData) ? segData : []);
-      setCategorie(Array.isArray(catData) ? catData : []);
+      setSegnalazioni(segData);
+      setCategorie(catData);
     } catch (err) {
       console.error("Errore caricamento dati:", err);
       toast({ title: "Errore caricamento dati", status: "error" });
@@ -69,9 +68,9 @@ export default function Segnalazione() {
     loadData();
   }, []);
 
-  // 🔹 Filtri
+  // 📌 Filtri
   const segnalazioniFiltrate = (segnalazioni || []).filter((s) => {
-    const dataMatch = filtroData ? s.data?.startsWith(filtroData) : true;
+    const dataMatch = filtroData ? s.data.startsWith(filtroData) : true;
     const catMatch = filtroCategoria ? s.categoria === filtroCategoria : true;
     return dataMatch && catMatch;
   });
@@ -113,7 +112,7 @@ export default function Segnalazione() {
         </Button>
       </HStack>
 
-      {/* Tabella segnalazioni */}
+      {/* Tabella */}
       <Box bg="white" p={6} borderRadius="lg" shadow="md">
         <Table>
           <Thead>
@@ -130,11 +129,11 @@ export default function Segnalazione() {
             {(segnalazioniFiltrate || []).map((s) => (
               <Tr key={s.id}>
                 <Td>{s.id}</Td>
-                <Td>{s.data ? new Date(s.data).toLocaleDateString("it-IT") : ""}</Td>
-                <Td>{s.ora || ""}</Td>
-                <Td>{s.categoria || ""}</Td>
-                <Td>{s.sala || ""}</Td>
-                <Td>{s.descrizione || ""}</Td>
+                <Td>{new Date(s.data).toLocaleDateString("it-IT")}</Td>
+                <Td>{s.ora}</Td>
+                <Td>{s.categoria}</Td>
+                <Td>{s.sala}</Td>
+                <Td>{s.descrizione}</Td>
               </Tr>
             ))}
           </Tbody>
