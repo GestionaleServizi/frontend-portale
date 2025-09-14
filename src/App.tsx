@@ -2,24 +2,12 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import DashboardAdmin from "./pages/DashboardAdmin";
-import Segnalazione from "./pages/Segnalazione"; // unica pagina per operatori
-import Utenti from "./pages/UtentiPage";
-import Categorie from "./pages/CategoriePage";
-import Clienti from "./pages/ClientiPage";
-import { AuthProvider, useAuth } from "./hooks/useAuth";
-
-function PrivateRoute({
-  children,
-  ruolo,
-}: {
-  children: JSX.Element;
-  ruolo: string;
-}) {
-  const { token, user } = useAuth();
-  if (!token) return <Navigate to="/" replace />;
-  if (ruolo && user?.ruolo !== ruolo) return <Navigate to="/" replace />;
-  return children;
-}
+import Segnalazione from "./pages/Segnalazione";
+import UtentiPage from "./pages/UtentiPage";
+import CategoriePage from "./pages/CategoriePage";
+import ClientiPage from "./pages/ClientiPage";
+import ProtectedRoute from "./ProtectedRoute"; 
+import { AuthProvider } from "./hooks/useAuth";
 
 function App() {
   return (
@@ -33,35 +21,35 @@ function App() {
           <Route
             path="/dashboard"
             element={
-              <PrivateRoute ruolo="admin">
+              <ProtectedRoute ruolo="admin">
                 <DashboardAdmin />
-              </PrivateRoute>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/utenti"
             element={
-              <PrivateRoute ruolo="admin">
-                <Utenti />
-              </PrivateRoute>
+              <ProtectedRoute ruolo="admin">
+                <UtentiPage />
+              </ProtectedRoute>
             }
           />
           <Route
             path="/clienti"
             element={
-              <PrivateRoute ruolo="admin">
-                <Clienti />
-              </PrivateRoute>
+              <ProtectedRoute ruolo="admin">
+                <ClientiPage />
+              </ProtectedRoute>
             }
           />
 
-          {/* Categorie - accessibile a entrambi */}
+          {/* Categorie: accesso a entrambi */}
           <Route
             path="/categorie"
             element={
-              <PrivateRoute ruolo={user?.ruolo === "admin" ? "admin" : "operatore"}>
-                <Categorie />
-              </PrivateRoute>
+              <ProtectedRoute ruolo="any">
+                <CategoriePage />
+              </ProtectedRoute>
             }
           />
 
@@ -69,9 +57,9 @@ function App() {
           <Route
             path="/segnalazioni"
             element={
-              <PrivateRoute ruolo="operatore">
+              <ProtectedRoute ruolo="operatore">
                 <Segnalazione />
-              </PrivateRoute>
+              </ProtectedRoute>
             }
           />
 
