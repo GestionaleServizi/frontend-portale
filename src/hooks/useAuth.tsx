@@ -17,7 +17,6 @@ type User = {
 type AuthContextType = {
   user: User | null;
   token: string | null;
-  login: (email: string, password: string) => Promise<User>;
   logout: () => void;
 };
 
@@ -27,6 +26,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
 
+  // Al mount recupera user/token da localStorage
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
     const storedToken = localStorage.getItem("token");
@@ -37,26 +37,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   }, []);
 
-  const login = async (email: string, password: string): Promise<User> => {
-    const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-
-    if (!res.ok) {
-      throw new Error("Credenziali non valide");
-    }
-
-    const data = await res.json();
-    localStorage.setItem("token", data.token);
-    localStorage.setItem("user", JSON.stringify(data.user));
-    setUser(data.user);
-    setToken(data.token);
-
-    return data.user;
-  };
-
+  // Logout globale
   const logout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -65,7 +46,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout }}>
+    <AuthContext.Provider value={{ user, token, logout }}>
       {children}
     </AuthContext.Provider>
   );
