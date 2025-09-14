@@ -1,5 +1,6 @@
 // src/pages/Segnalazione.tsx
 import React, { useEffect, useState } from "react";
+import { useAuth } from "../hooks/useAuth";
 import {
   Box,
   Flex,
@@ -18,7 +19,6 @@ import {
   useToast,
   VStack,
 } from "@chakra-ui/react";
-import { useAuth } from "../hooks/useAuth";
 
 type Segnalazione = {
   id: number;
