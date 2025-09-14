@@ -1,11 +1,17 @@
-// src/hooks/useAuth.ts
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+// src/hooks/useAuth.tsx
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  PropsWithChildren,
+} from "react";
 
 type User = {
   id: number;
   email: string;
-  ruolo: string;
-  cliente_id?: number;
+  ruolo: "admin" | "operatore";
+  cliente_id?: number | null;
 };
 
 type AuthContextType = {
@@ -17,17 +23,17 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem("token");
     const storedUser = localStorage.getItem("user");
+    const storedToken = localStorage.getItem("token");
 
-    if (storedToken && storedUser) {
-      setToken(storedToken);
+    if (storedUser && storedToken) {
       setUser(JSON.parse(storedUser));
+      setToken(storedToken);
     }
   }, []);
 
@@ -43,21 +49,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const data = await res.json();
-
     localStorage.setItem("token", data.token);
     localStorage.setItem("user", JSON.stringify(data.user));
-
-    setToken(data.token);
     setUser(data.user);
+    setToken(data.token);
 
     return data.user;
   };
 
   const logout = () => {
-    setToken(null);
-    setUser(null);
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    setUser(null);
+    setToken(null);
   };
 
   return (
