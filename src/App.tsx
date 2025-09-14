@@ -2,9 +2,9 @@ import { Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
 import DashboardAdmin from "./pages/DashboardAdmin";
 import Segnalazione from "./pages/Segnalazione"; // pagina operatore
-import Utenti from "./pages/Utenti";
-import Categorie from "./pages/Categorie";
-import Clienti from "./pages/Clienti";
+import Utenti from "./pages/UtentiPage";
+import Categorie from "./pages/CategoriePage";
+import Clienti from "./pages/ClientiPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 export default function App() {
