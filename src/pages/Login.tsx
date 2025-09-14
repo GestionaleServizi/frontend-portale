@@ -1,6 +1,5 @@
 // src/pages/Login.tsx
 import React, { useState } from "react";
-import { useAuth } from "../hooks/useAuth";
 import {
   Box,
   Button,
@@ -13,6 +12,7 @@ import {
   FormLabel,
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
 import logo from "/servizinet_logo.png";
 
 export default function Login() {
