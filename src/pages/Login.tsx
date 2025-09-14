@@ -1,22 +1,32 @@
 // src/pages/Login.tsx
 import React, { useState } from "react";
 import {
-  Box, Button, Input, Heading, VStack, useToast, Image, FormControl, FormLabel
+  Box,
+  Button,
+  Input,
+  Heading,
+  VStack,
+  useToast,
+  Image,
+  FormControl,
+  FormLabel,
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth } from "../hooks/useAuth";  // ✅ importa useAuth
 import logo from "/servizinet_logo.png";
 
 export default function Login() {
-  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const toast = useToast();
   const navigate = useNavigate();
+  const { login } = useAuth();   // ✅ usiamo login dal contesto
 
   const handleLogin = async () => {
     try {
       const user = await login(email, password);
+
+      // ✅ redirect in base al ruolo
       if (user.ruolo === "admin") {
         navigate("/dashboard");
       } else if (user.ruolo === "operatore") {
@@ -37,12 +47,22 @@ export default function Login() {
 
         <FormControl>
           <FormLabel>Email</FormLabel>
-          <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <Input
+            type="email"
+            placeholder="Inserisci la tua email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
         </FormControl>
 
         <FormControl>
           <FormLabel>Password</FormLabel>
-          <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <Input
+            type="password"
+            placeholder="Inserisci la tua password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
         </FormControl>
 
         <Button colorScheme="blue" onClick={handleLogin} w="full" mt={4}>
