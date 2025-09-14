@@ -39,7 +39,7 @@ export default function Segnalazione() {
   const [filtroCategoria, setFiltroCategoria] = useState("");
   const toast = useToast();
 
-  // 📌 Carica dati (uguale alla dashboard admin)
+  // 🔹 Carica dati
   const loadData = async () => {
     try {
       const [segRes, catRes] = await Promise.all([
@@ -51,9 +51,16 @@ export default function Segnalazione() {
         }),
       ]);
 
-      setSegnalazioni(await segRes.json());
-      setCategorie(await catRes.json()); // 👈 identico alla dashboard
-    } catch {
+      const segData = await segRes.json();
+      const catData = await catRes.json();
+
+      console.log("✅ Segnalazioni:", segData);
+      console.log("✅ Categorie:", catData);
+
+      setSegnalazioni(Array.isArray(segData) ? segData : []);
+      setCategorie(Array.isArray(catData) ? catData : []);
+    } catch (err) {
+      console.error("Errore caricamento dati:", err);
       toast({ title: "Errore caricamento dati", status: "error" });
     }
   };
@@ -62,16 +69,16 @@ export default function Segnalazione() {
     loadData();
   }, []);
 
-  // 📌 Filtri
+  // 🔹 Filtri
   const segnalazioniFiltrate = (segnalazioni || []).filter((s) => {
-    const dataMatch = filtroData ? s.data.startsWith(filtroData) : true;
+    const dataMatch = filtroData ? s.data?.startsWith(filtroData) : true;
     const catMatch = filtroCategoria ? s.categoria === filtroCategoria : true;
     return dataMatch && catMatch;
   });
 
   return (
     <Flex minH="100vh" bg="gray.50" direction="column" p={8}>
-      {/* Header con logo, utente e sala */}
+      {/* Header */}
       <VStack spacing={2} mb={6}>
         <img src="/logo.png" alt="Logo" width="120" />
         <Heading>Nuova Segnalazione</Heading>
@@ -95,18 +102,13 @@ export default function Segnalazione() {
           value={filtroCategoria}
           onChange={(e) => setFiltroCategoria(e.target.value)}
         >
-          {categorie.map((c) => (
+          {(categorie || []).map((c) => (
             <option key={c.id} value={c.nome_categoria}>
               {c.nome_categoria}
             </option>
           ))}
         </Select>
-        <Button
-          onClick={() => {
-            setFiltroData("");
-            setFiltroCategoria("");
-          }}
-        >
+        <Button onClick={() => { setFiltroData(""); setFiltroCategoria(""); }}>
           Reset Filtri
         </Button>
       </HStack>
@@ -125,14 +127,14 @@ export default function Segnalazione() {
             </Tr>
           </Thead>
           <Tbody>
-            {segnalazioniFiltrate.map((s) => (
+            {(segnalazioniFiltrate || []).map((s) => (
               <Tr key={s.id}>
                 <Td>{s.id}</Td>
-                <Td>{new Date(s.data).toLocaleDateString("it-IT")}</Td>
-                <Td>{s.ora}</Td>
-                <Td>{s.categoria}</Td>
-                <Td>{s.sala}</Td>
-                <Td>{s.descrizione}</Td>
+                <Td>{s.data ? new Date(s.data).toLocaleDateString("it-IT") : ""}</Td>
+                <Td>{s.ora || ""}</Td>
+                <Td>{s.categoria || ""}</Td>
+                <Td>{s.sala || ""}</Td>
+                <Td>{s.descrizione || ""}</Td>
               </Tr>
             ))}
           </Tbody>
