@@ -6,7 +6,7 @@ import Segnalazione from "./pages/Segnalazione";
 import UtentiPage from "./pages/UtentiPage";
 import CategoriePage from "./pages/CategoriePage";
 import ClientiPage from "./pages/ClientiPage";
-import ProtectedRoute from "./ProtectedRoute"; 
+import ProtectedRoute from "./components/ProtectedRoute"; 
 import { AuthProvider } from "./hooks/useAuth";
 
 function App() {
