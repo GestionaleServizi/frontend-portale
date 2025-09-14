@@ -20,52 +20,21 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
-          {/* Login */}
           <Route path="/" element={<Login />} />
 
           {/* Admin */}
-          <Route
-            path="/dashboard"
-            element={
-              <PrivateRoute ruolo="admin">
-                <DashboardAdmin />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/utenti"
-            element={
-              <PrivateRoute ruolo="admin">
-                <Utenti />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/categorie"
-            element={
-              <PrivateRoute ruolo="admin">
-                <Categorie />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/clienti"
-            element={
-              <PrivateRoute ruolo="admin">
-                <Clienti />
-              </PrivateRoute>
-            }
-          />
+          <Route path="/dashboard" element={
+            <PrivateRoute ruolo="admin"><DashboardAdmin /></PrivateRoute>} />
+          <Route path="/utenti" element={
+            <PrivateRoute ruolo="admin"><Utenti /></PrivateRoute>} />
+          <Route path="/categorie" element={
+            <PrivateRoute ruolo="admin"><Categorie /></PrivateRoute>} />
+          <Route path="/clienti" element={
+            <PrivateRoute ruolo="admin"><Clienti /></PrivateRoute>} />
 
           {/* Operatore */}
-          <Route
-            path="/segnalazioni"
-            element={
-              <PrivateRoute ruolo="operatore">
-                <Segnalazione />
-              </PrivateRoute>
-            }
-          />
+          <Route path="/segnalazioni" element={
+            <PrivateRoute ruolo="operatore"><Segnalazione /></PrivateRoute>} />
         </Routes>
       </Router>
     </AuthProvider>
