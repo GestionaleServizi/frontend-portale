@@ -1,84 +1,59 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import Login from "./pages/Login";
-import DashboardAdmin from "./pages/DashboardAdmin";
-import Segnalazione from "./pages/Segnalazione"; 
-import Utenti from "./pages/Utenti";
-import Categorie from "./pages/Categorie";
-import Clienti from "./pages/Clienti";
-import { AuthProvider, useAuth } from "./hooks/useAuth";
+import express from "express";
+import { query } from "../db.js";
+import { verifyToken, AuthRequest } from "../middleware/auth.js";
 
-function PrivateRoute({ children, ruolo }: { children: JSX.Element; ruolo: string }) {
-  const { token, user } = useAuth();
-  if (!token) return <Navigate to="/" replace />;
+const router = express.Router();
 
-  // 👇 Se è operatore e prova ad accedere a pagine admin → redirect a segnalazioni
-  if (ruolo && user?.ruolo !== ruolo) {
-    if (user?.ruolo === "operatore") {
-      return <Navigate to="/segnalazione" replace />;
-    }
-    return <Navigate to="/" replace />;
+// 📌 Recupera tutte le categorie (accesso libero a tutti gli utenti autenticati)
+router.get("/", verifyToken, async (req: AuthRequest, res) => {
+  try {
+    const result = await query("SELECT * FROM categorie ORDER BY id DESC");
+    res.json(result);
+  } catch (err) {
+    console.error("Errore recupero categorie:", err);
+    res.status(500).json({ error: "Errore nel recupero categorie" });
   }
+});
 
-  return children;
-}
+// 📌 Inserisci una nuova categoria (solo admin)
+router.post("/", verifyToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.ruolo !== "admin") {
+      return res.status(403).json({ error: "Accesso negato" });
+    }
 
-function App() {
-  return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          {/* Login */}
-          <Route path="/" element={<Login />} />
+    const { nome_categoria } = req.body;
+    if (!nome_categoria) {
+      return res.status(400).json({ error: "Il nome della categoria è obbligatorio" });
+    }
 
-          {/* Dashboard Admin (solo admin) */}
-          <Route
-            path="/dashboard"
-            element={
-              <PrivateRoute ruolo="admin">
-                <DashboardAdmin />
-              </PrivateRoute>
-            }
-          />
+    const result = await query(
+      `INSERT INTO categorie (nome_categoria)
+       VALUES ($1) RETURNING *`,
+      [nome_categoria]
+    );
 
-          {/* Pagina Segnalazioni (accesso operatori e admin) */}
-          <Route
-            path="/segnalazione"
-            element={
-              <PrivateRoute ruolo="">
-                <Segnalazione />
-              </PrivateRoute>
-            }
-          />
+    res.status(201).json(result[0]);
+  } catch (err) {
+    console.error("Errore inserimento categoria:", err);
+    res.status(500).json({ error: "Errore nell'inserimento categoria" });
+  }
+});
 
-          {/* Gestione admin (solo admin) */}
-          <Route
-            path="/utenti"
-            element={
-              <PrivateRoute ruolo="admin">
-                <Utenti />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/categorie"
-            element={
-              <PrivateRoute ruolo="admin">
-                <Categorie />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/clienti"
-            element={
-              <PrivateRoute ruolo="admin">
-                <Clienti />
-              </PrivateRoute>
-            }
-          />
-        </Routes>
-      </Router>
-    </AuthProvider>
-  );
-}
+// 📌 Elimina una categoria (solo admin)
+router.delete("/:id", verifyToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.ruolo !== "admin") {
+      return res.status(403).json({ error: "Accesso negato" });
+    }
 
-export default App;
+    const { id } = req.params;
+    await query("DELETE FROM categorie WHERE id = $1", [id]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Errore eliminazione categoria:", err);
+    res.status(500).json({ error: "Errore nell'eliminazione categoria" });
+  }
+});
+
+export default router;
