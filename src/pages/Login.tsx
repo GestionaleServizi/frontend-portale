@@ -12,7 +12,6 @@ import {
   FormLabel,
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";
 import logo from "/servizinet_logo.png";
 
 export default function Login() {
