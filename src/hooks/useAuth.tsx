@@ -1,11 +1,5 @@
 // src/hooks/useAuth.tsx
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  PropsWithChildren,
-} from "react";
+import React, { createContext, useContext, useState, useEffect, PropsWithChildren } from "react";
 
 type User = {
   id: number;
@@ -17,6 +11,7 @@ type User = {
 type AuthContextType = {
   user: User | null;
   token: string | null;
+  login: (email: string, password: string) => Promise<User>;
   logout: () => void;
 };
 
@@ -26,18 +21,33 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
 
-  // Al mount recupera user/token da localStorage
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
     const storedToken = localStorage.getItem("token");
-
     if (storedUser && storedToken) {
       setUser(JSON.parse(storedUser));
       setToken(storedToken);
     }
   }, []);
 
-  // Logout globale
+  const login = async (email: string, password: string): Promise<User> => {
+    const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (!res.ok) throw new Error("Credenziali non valide");
+
+    const data = await res.json();
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("user", JSON.stringify(data.user));
+    setUser(data.user);
+    setToken(data.token);
+
+    return data.user;
+  };
+
   const logout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -46,7 +56,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, logout }}>
+    <AuthContext.Provider value={{ user, token, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
@@ -54,8 +64,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth deve essere usato dentro AuthProvider");
-  }
+  if (!context) throw new Error("useAuth deve essere usato dentro AuthProvider");
   return context;
 }
