@@ -29,7 +29,7 @@ type Segnalazione = {
   sala?: string;
 };
 
-type Categoria = { id: number; nome_categoria?: string; nome?: string };
+type Categoria = { id: number; nome_categoria: string };
 
 export default function Segnalazione() {
   const { token, user, logout } = useAuth();
@@ -39,7 +39,7 @@ export default function Segnalazione() {
   const [filtroCategoria, setFiltroCategoria] = useState("");
   const toast = useToast();
 
-  // 📌 Carica dati
+  // 📌 Carica dati (uguale alla dashboard admin)
   const loadData = async () => {
     try {
       const [segRes, catRes] = await Promise.all([
@@ -51,11 +51,8 @@ export default function Segnalazione() {
         }),
       ]);
 
-      const segData = await segRes.json();
-      const catData = await catRes.json();
-
-      setSegnalazioni(Array.isArray(segData) ? segData : []);
-      setCategorie(Array.isArray(catData) ? catData : []);
+      setSegnalazioni(await segRes.json());
+      setCategorie(await catRes.json()); // 👈 identico alla dashboard
     } catch {
       toast({ title: "Errore caricamento dati", status: "error" });
     }
@@ -74,7 +71,7 @@ export default function Segnalazione() {
 
   return (
     <Flex minH="100vh" bg="gray.50" direction="column" p={8}>
-      {/* Header */}
+      {/* Header con logo, utente e sala */}
       <VStack spacing={2} mb={6}>
         <img src="/logo.png" alt="Logo" width="120" />
         <Heading>Nuova Segnalazione</Heading>
@@ -98,9 +95,9 @@ export default function Segnalazione() {
           value={filtroCategoria}
           onChange={(e) => setFiltroCategoria(e.target.value)}
         >
-          {(categorie || []).map((c) => (
-            <option key={c.id} value={c.nome_categoria || c.nome}>
-              {c.nome_categoria || c.nome}
+          {categorie.map((c) => (
+            <option key={c.id} value={c.nome_categoria}>
+              {c.nome_categoria}
             </option>
           ))}
         </Select>
@@ -128,7 +125,7 @@ export default function Segnalazione() {
             </Tr>
           </Thead>
           <Tbody>
-            {(segnalazioniFiltrate || []).map((s) => (
+            {segnalazioniFiltrate.map((s) => (
               <Tr key={s.id}>
                 <Td>{s.id}</Td>
                 <Td>{new Date(s.data).toLocaleDateString("it-IT")}</Td>
