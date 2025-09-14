@@ -12,7 +12,7 @@ import {
   FormLabel,
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth } from "../hooks/useAuth.tsx";
 import logo from "/servizinet_logo.png"; // ✅ mantieni logo
 
 export default function Login() {
