@@ -28,13 +28,11 @@ export default function Login() {
         body: JSON.stringify({ email, password }),
       });
 
-      if (!res.ok) {
-        throw new Error("Credenziali non valide");
-      }
+      if (!res.ok) throw new Error("Credenziali non valide");
 
       const data = await res.json();
 
-      // Salvo token e user nel localStorage
+      // Salvo user e token
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
 
@@ -42,11 +40,11 @@ export default function Login() {
       if (data.user.ruolo === "admin") {
         navigate("/dashboard");
       } else if (data.user.ruolo === "operatore") {
-        navigate("/segnalazioni");
+        navigate("/segnalazioni"); // 👈 deve corrispondere ad App.tsx
       } else {
         toast({ title: "Ruolo non autorizzato", status: "error" });
       }
-    } catch (err) {
+    } catch {
       toast({ title: "Credenziali non valide", status: "error" });
     }
   };
