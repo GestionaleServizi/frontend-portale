@@ -1,3 +1,4 @@
+// src/main.tsx
 import React from "react";
 import ReactDOM from "react-dom/client";
 import {
@@ -7,46 +8,25 @@ import {
   Navigate,
 } from "react-router-dom";
 import { ChakraProvider } from "@chakra-ui/react";
-import theme from "./theme"; // ✅ import del tema personalizzato
+import theme from "./theme"; // ✅ tema personalizzato
 
 import "./styles.css";
 import Login from "./pages/Login";
 import Dashboard from "./pages/DashboardAdmin";
 import Segnalazione from "./pages/Segnalazione";
-
-function isAuth() {
-  try {
-    return !!localStorage.getItem("token");
-  } catch {
-    return false;
-  }
-}
+import { AuthProvider } from "./hooks/useAuth"; // 👈 importa il provider
 
 function AppLayout() {
-  const authed = isAuth();
   return (
     <div className="app">
-      {authed && (
-        <header className="nav">
-          <a href="/dashboard">Dashboard</a>
-          <a href="/segnalazione">Segnalazione</a>
-          <button
-            onClick={() => {
-              localStorage.clear();
-              window.location.href = "/login";
-            }}
-          >
-            Logout
-          </button>
-        </header>
-      )}
       <Outlet />
     </div>
   );
 }
 
 function Protected() {
-  return isAuth() ? <Outlet /> : <Navigate to="/login" replace />;
+  // 👇 ora il controllo auth lo spostiamo su useAuth, non più sul localStorage diretto
+  return <Outlet />;
 }
 
 const router = createBrowserRouter([
@@ -59,7 +39,7 @@ const router = createBrowserRouter([
         element: <Protected />,
         children: [
           { path: "/dashboard", element: <Dashboard /> },
-          { path: "/segnalazione", element: <Segnalazione /> },
+          { path: "/segnalazioni", element: <Segnalazione /> }, // 👈 occhio al plurale, deve coincidere con App.tsx
         ],
       },
       { path: "*", element: <div>404</div> },
@@ -70,7 +50,10 @@ const router = createBrowserRouter([
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ChakraProvider theme={theme}>
-      <RouterProvider router={router} />
+      {/* 👇 Avvolgi tutta l’app dentro l’AuthProvider */}
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
     </ChakraProvider>
   </React.StrictMode>
 );
