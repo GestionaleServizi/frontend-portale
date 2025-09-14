@@ -1,11 +1,11 @@
 // src/hooks/useAuth.ts
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
 type User = {
   id: number;
   email: string;
-  ruolo: "admin" | "operatore";
-  cliente_id?: number | null;
+  ruolo: string;
+  cliente_id?: number;
 };
 
 type AuthContextType = {
@@ -17,46 +17,47 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
 
-  // 🔄 Recupera user/token da localStorage al refresh
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
     const storedToken = localStorage.getItem("token");
-    if (storedUser && storedToken) {
-      setUser(JSON.parse(storedUser));
+    const storedUser = localStorage.getItem("user");
+
+    if (storedToken && storedUser) {
       setToken(storedToken);
+      setUser(JSON.parse(storedUser));
     }
   }, []);
 
-  // 🔑 Login
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<User> => {
     const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     });
 
-    if (!res.ok) throw new Error("Credenziali non valide");
+    if (!res.ok) {
+      throw new Error("Credenziali non valide");
+    }
 
     const data = await res.json();
-    setUser(data.user);
-    setToken(data.token);
 
-    localStorage.setItem("user", JSON.stringify(data.user));
     localStorage.setItem("token", data.token);
+    localStorage.setItem("user", JSON.stringify(data.user));
+
+    setToken(data.token);
+    setUser(data.user);
 
     return data.user;
   };
 
-  // 🚪 Logout
   const logout = () => {
-    setUser(null);
     setToken(null);
-    localStorage.removeItem("user");
+    setUser(null);
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
   };
 
   return (
@@ -66,7 +67,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-// 🎣 Hook personalizzato
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
