@@ -1,7 +1,8 @@
+// src/App.tsx
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import DashboardAdmin from "./pages/DashboardAdmin";
-import Segnalazione from "./pages/Segnalazione"; // 👈 unica pagina per operatori
+import Segnalazione from "./pages/Segnalazione";
 import Utenti from "./pages/Utenti";
 import Categorie from "./pages/Categorie";
 import Clienti from "./pages/Clienti";
