@@ -1,69 +1,172 @@
-// src/routes/segnalazioni.ts
-import express from "express";
-import { query } from "../db.js";
-import { verifyToken, AuthRequest } from "../middleware/auth.js";
+// src/pages/Segnalazione.tsx
+import React, { useEffect, useState } from "react";
+import { useAuth } from "../hooks/useAuth";
+import {
+  Box,
+  Flex,
+  Heading,
+  Text,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  Button,
+  HStack,
+  Select,
+  Input,
+  useToast,
+  VStack,
+  Spinner,
+} from "@chakra-ui/react";
 
-const router = express.Router();
+type Segnalazione = {
+  id: number;
+  data: string;
+  ora: string;
+  descrizione: string;
+  categoria?: string;
+  sala?: string;
+};
 
-// 📌 Recupera tutte le segnalazioni
-router.get("/", verifyToken, async (req: AuthRequest, res) => {
-  try {
-    let sql = `
-      SELECT 
-        s.id, 
-        s.data, 
-        s.ora, 
-        c.nome_categoria AS categoria, 
-        cl.nome_sala AS sala, 
-        s.descrizione
-      FROM segnalazioni s
-      JOIN categorie c ON s.categoria_id = c.id
-      JOIN clienti cl ON s.cliente_id = cl.id
-    `;
+type Categoria = { id: number; nome_categoria: string };
 
-    const params: any[] = [];
+export default function Segnalazione() {
+  const { token, user, logout } = useAuth();
+  const [segnalazioni, setSegnalazioni] = useState<Segnalazione[]>([]);
+  const [categorie, setCategorie] = useState<Categoria[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filtroData, setFiltroData] = useState("");
+  const [filtroCategoria, setFiltroCategoria] = useState("");
+  const toast = useToast();
 
-    // 👉 Se l'utente è operatore, filtro per la sua sala
-    if (req.user?.ruolo === "operatore" && req.user?.cliente_id) {
-      sql += ` WHERE s.cliente_id = $1`;
-      params.push(req.user.cliente_id);
+  const loadData = async () => {
+    try {
+      const [segRes, catRes] = await Promise.all([
+        fetch(`${import.meta.env.VITE_API_BASE_URL}/segnalazioni`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${import.meta.env.VITE_API_BASE_URL}/categorie`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+
+      const segData = await segRes.json();
+      const catData = await catRes.json();
+
+      console.log("📥 Segnalazioni:", segData);
+      console.log("📥 Categorie:", catData);
+
+      setSegnalazioni(Array.isArray(segData) ? segData : []);
+      setCategorie(Array.isArray(catData) ? catData : []);
+    } catch (err) {
+      console.error("Errore caricamento dati:", err);
+      toast({ title: "Errore caricamento dati", status: "error" });
+    } finally {
+      setLoading(false);
     }
+  };
 
-    sql += ` ORDER BY s.data DESC, s.ora DESC`;
+  useEffect(() => {
+    loadData();
+  }, []);
 
-    const result = await query(sql, params);
-    res.json(result);
-  } catch (err) {
-    console.error("Errore recupero segnalazioni:", err);
-    res.status(500).json({ error: "Errore nel recupero delle segnalazioni" });
-  }
-});
+  const segnalazioniFiltrate = segnalazioni.filter((s) => {
+    const dataMatch = filtroData ? s.data?.startsWith(filtroData) : true;
+    const catMatch = filtroCategoria ? s.categoria === filtroCategoria : true;
+    return dataMatch && catMatch;
+  });
 
-// 📌 Inserisci una nuova segnalazione
-router.post("/", verifyToken, async (req: AuthRequest, res) => {
-  try {
-    let { data, ora, descrizione, cliente_id, categoria_id } = req.body;
-
-    // 👉 Se è un operatore, forza il cliente_id alla sua sala
-    if (req.user?.ruolo === "operatore" && req.user?.cliente_id) {
-      cliente_id = req.user.cliente_id;
-    }
-
-    if (!data || !ora || !descrizione || !cliente_id || !categoria_id) {
-      return res.status(400).json({ error: "Tutti i campi sono obbligatori" });
-    }
-
-    const result = await query(
-      `INSERT INTO segnalazioni (data, ora, descrizione, cliente_id, categoria_id)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [data, ora, descrizione, cliente_id, categoria_id]
+  if (loading) {
+    return (
+      <Flex minH="100vh" justify="center" align="center">
+        <Spinner size="xl" />
+      </Flex>
     );
-
-    res.status(201).json(result[0]);
-  } catch (err) {
-    console.error("Errore inserimento segnalazione:", err);
-    res.status(500).json({ error: "Errore nell'inserimento della segnalazione" });
   }
-});
 
-export default router;
+  return (
+    <Flex minH="100vh" bg="gray.50" direction="column" p={8}>
+      {/* Header */}
+      <VStack spacing={2} mb={6}>
+        <img src="/logo.png" alt="Logo" width="120" />
+        <Heading>Nuova Segnalazione</Heading>
+        <Text>
+          👤 {user?.email} | 🏢 {user?.sala || "N/A"}
+        </Text>
+        <Button colorScheme="red" size="sm" onClick={logout}>
+          Logout
+        </Button>
+      </VStack>
+
+      {/* Filtri */}
+      <HStack mb={4} spacing={4}>
+        <Input
+          type="date"
+          value={filtroData}
+          onChange={(e) => setFiltroData(e.target.value)}
+        />
+        <Select
+          placeholder="Tutte le categorie"
+          value={filtroCategoria}
+          onChange={(e) => setFiltroCategoria(e.target.value)}
+        >
+          {Array.isArray(categorie) && categorie.length > 0 ? (
+            categorie.map((c) => (
+              <option key={c.id} value={c.nome_categoria}>
+                {c.nome_categoria}
+              </option>
+            ))
+          ) : (
+            <option disabled>Nessuna categoria disponibile</option>
+          )}
+        </Select>
+        <Button
+          onClick={() => {
+            setFiltroData("");
+            setFiltroCategoria("");
+          }}
+        >
+          Reset Filtri
+        </Button>
+      </HStack>
+
+      {/* Tabella */}
+      <Box bg="white" p={6} borderRadius="lg" shadow="md">
+        {segnalazioniFiltrate.length === 0 ? (
+          <Text>Nessuna segnalazione trovata</Text>
+        ) : (
+          <Table>
+            <Thead>
+              <Tr>
+                <Th>ID</Th>
+                <Th>Data</Th>
+                <Th>Ora</Th>
+                <Th>Categoria</Th>
+                <Th>Sala</Th>
+                <Th>Descrizione</Th>
+              </Tr>
+            </Thead>
+            <Tbody>
+              {segnalazioniFiltrate.map((s) => (
+                <Tr key={s.id}>
+                  <Td>{s.id}</Td>
+                  <Td>
+                    {s.data
+                      ? new Date(s.data).toLocaleDateString("it-IT")
+                      : ""}
+                  </Td>
+                  <Td>{s.ora}</Td>
+                  <Td>{s.categoria || "-"}</Td>
+                  <Td>{s.sala || "-"}</Td>
+                  <Td>{s.descrizione}</Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+        )}
+      </Box>
+    </Flex>
+  );
+}
