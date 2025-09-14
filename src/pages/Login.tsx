@@ -12,41 +12,28 @@ import {
   FormLabel,
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
-import logo from "/servizinet_logo.png"; // ✅ logo
+import { useAuth } from "../hooks/useAuth";
+import logo from "/servizinet_logo.png";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const { login } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
 
   const handleLogin = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
+      const user = await login(email, password);
 
-      if (!res.ok) {
-        throw new Error("Credenziali non valide");
-      }
-
-      const data = await res.json();
-
-      // ✅ Salvo token e user in localStorage
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-
-      // ✅ Redirect in base al ruolo
-      if (data.user.ruolo === "admin") {
+      if (user.ruolo === "admin") {
         navigate("/dashboard");
-      } else if (data.user.ruolo === "operatore") {
+      } else if (user.ruolo === "operatore") {
         navigate("/segnalazioni");
       } else {
         toast({ title: "Ruolo non autorizzato", status: "error" });
       }
-    } catch (err) {
+    } catch {
       toast({ title: "Credenziali non valide", status: "error" });
     }
   };
