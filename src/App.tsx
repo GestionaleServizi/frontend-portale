@@ -1,44 +1,64 @@
-// src/App.tsx
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
 import DashboardAdmin from "./pages/DashboardAdmin";
-import Segnalazione from "./pages/Segnalazione";
+import Segnalazione from "./pages/Segnalazione"; // pagina operatore
 import Utenti from "./pages/Utenti";
 import Categorie from "./pages/Categorie";
 import Clienti from "./pages/Clienti";
-import { AuthProvider, useAuth } from "./hooks/useAuth";
+import ProtectedRoute from "./components/ProtectedRoute";
 
-function PrivateRoute({ children, ruolo }: { children: JSX.Element; ruolo: string }) {
-  const { token, user } = useAuth();
-  if (!token) return <Navigate to="/" replace />;
-  if (ruolo && user?.ruolo !== ruolo) return <Navigate to="/" replace />;
-  return children;
-}
-
-function App() {
+export default function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          <Route path="/" element={<Login />} />
+    <Routes>
+      {/* Login */}
+      <Route path="/" element={<Login />} />
 
-          {/* Admin */}
-          <Route path="/dashboard" element={
-            <PrivateRoute ruolo="admin"><DashboardAdmin /></PrivateRoute>} />
-          <Route path="/utenti" element={
-            <PrivateRoute ruolo="admin"><Utenti /></PrivateRoute>} />
-          <Route path="/categorie" element={
-            <PrivateRoute ruolo="admin"><Categorie /></PrivateRoute>} />
-          <Route path="/clienti" element={
-            <PrivateRoute ruolo="admin"><Clienti /></PrivateRoute>} />
+      {/* Admin */}
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute ruolo="admin">
+            <DashboardAdmin />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/utenti"
+        element={
+          <ProtectedRoute ruolo="admin">
+            <Utenti />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/categorie"
+        element={
+          <ProtectedRoute ruolo="admin">
+            <Categorie />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/clienti"
+        element={
+          <ProtectedRoute ruolo="admin">
+            <Clienti />
+          </ProtectedRoute>
+        }
+      />
 
-          {/* Operatore */}
-          <Route path="/segnalazioni" element={
-            <PrivateRoute ruolo="operatore"><Segnalazione /></PrivateRoute>} />
-        </Routes>
-      </Router>
-    </AuthProvider>
+      {/* Operatore */}
+      <Route
+        path="/segnalazioni"
+        element={
+          <ProtectedRoute ruolo="operatore">
+            <Segnalazione />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Not Found */}
+      <Route path="*" element={<div>404 - Pagina non trovata</div>} />
+    </Routes>
   );
 }
-
-export default App;
