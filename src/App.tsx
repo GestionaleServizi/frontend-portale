@@ -3,9 +3,9 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import Login from "./pages/Login";
 import DashboardAdmin from "./pages/DashboardAdmin";
 import Segnalazione from "./pages/Segnalazione"; // unica pagina per operatori
-import Utenti from "./pages/Utenti";
-import Categorie from "./pages/Categorie";
-import Clienti from "./pages/Clienti";
+import Utenti from "./pages/UtentiPage";
+import Categorie from "./pages/CategoriePage";
+import Clienti from "./pages/ClientiPage";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 
 function PrivateRoute({
