@@ -10,7 +10,7 @@ import {
 } from "@chakra-ui/react";
 import { useAuth } from "../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import logo from "../assets/logo.png"; // 👈 mantieni il logo esistente
+import logo from "/servizinet_logo.png"; // 👈 mantieni il logo esistente
 
 export default function Login() {
   const { login } = useAuth();
