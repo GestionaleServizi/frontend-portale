@@ -27,7 +27,6 @@ import {
   useDisclosure,
 } from "@chakra-ui/react";
 import { AddIcon, EditIcon, DeleteIcon } from "@chakra-ui/icons";
-import { useAuth } from "../hooks/useAuth";
 
 type Categoria = {
   id: number;
