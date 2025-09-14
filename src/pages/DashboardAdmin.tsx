@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useAuth } from "../hooks/useAuth";
 import {
   Box,
   Flex,
@@ -16,7 +17,6 @@ import {
   Input,
   useToast,
 } from "@chakra-ui/react";
-import { useAuth } from "../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 
 type Segnalazione = {
