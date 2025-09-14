@@ -18,6 +18,7 @@ import {
   Input,
   useToast,
   VStack,
+  Spinner,
 } from "@chakra-ui/react";
 
 type Segnalazione = {
@@ -35,11 +36,11 @@ export default function Segnalazione() {
   const { token, user, logout } = useAuth();
   const [segnalazioni, setSegnalazioni] = useState<Segnalazione[]>([]);
   const [categorie, setCategorie] = useState<Categoria[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filtroData, setFiltroData] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("");
   const toast = useToast();
 
-  // 📌 Carica segnalazioni e categorie
   const loadData = async () => {
     try {
       const [segRes, catRes] = await Promise.all([
@@ -54,13 +55,16 @@ export default function Segnalazione() {
       const segData = await segRes.json();
       const catData = await catRes.json();
 
-      console.log("Categorie ricevute:", catData); // 👈 debug
+      console.log("📥 Segnalazioni:", segData);
+      console.log("📥 Categorie:", catData);
 
-      setSegnalazioni(segData);
-      setCategorie(catData);
+      setSegnalazioni(Array.isArray(segData) ? segData : []);
+      setCategorie(Array.isArray(catData) ? catData : []);
     } catch (err) {
       console.error("Errore caricamento dati:", err);
       toast({ title: "Errore caricamento dati", status: "error" });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -68,12 +72,19 @@ export default function Segnalazione() {
     loadData();
   }, []);
 
-  // 📌 Filtri
-  const segnalazioniFiltrate = (segnalazioni || []).filter((s) => {
-    const dataMatch = filtroData ? s.data.startsWith(filtroData) : true;
+  const segnalazioniFiltrate = segnalazioni.filter((s) => {
+    const dataMatch = filtroData ? s.data?.startsWith(filtroData) : true;
     const catMatch = filtroCategoria ? s.categoria === filtroCategoria : true;
     return dataMatch && catMatch;
   });
+
+  if (loading) {
+    return (
+      <Flex minH="100vh" justify="center" align="center">
+        <Spinner size="xl" />
+      </Flex>
+    );
+  }
 
   return (
     <Flex minH="100vh" bg="gray.50" direction="column" p={8}>
@@ -101,43 +112,60 @@ export default function Segnalazione() {
           value={filtroCategoria}
           onChange={(e) => setFiltroCategoria(e.target.value)}
         >
-          {(categorie || []).map((c) => (
-            <option key={c.id} value={c.nome_categoria}>
-              {c.nome_categoria}
-            </option>
-          ))}
+          {Array.isArray(categorie) && categorie.length > 0 ? (
+            categorie.map((c) => (
+              <option key={c.id} value={c.nome_categoria}>
+                {c.nome_categoria}
+              </option>
+            ))
+          ) : (
+            <option disabled>Nessuna categoria disponibile</option>
+          )}
         </Select>
-        <Button onClick={() => { setFiltroData(""); setFiltroCategoria(""); }}>
+        <Button
+          onClick={() => {
+            setFiltroData("");
+            setFiltroCategoria("");
+          }}
+        >
           Reset Filtri
         </Button>
       </HStack>
 
       {/* Tabella */}
       <Box bg="white" p={6} borderRadius="lg" shadow="md">
-        <Table>
-          <Thead>
-            <Tr>
-              <Th>ID</Th>
-              <Th>Data</Th>
-              <Th>Ora</Th>
-              <Th>Categoria</Th>
-              <Th>Sala</Th>
-              <Th>Descrizione</Th>
-            </Tr>
-          </Thead>
-          <Tbody>
-            {(segnalazioniFiltrate || []).map((s) => (
-              <Tr key={s.id}>
-                <Td>{s.id}</Td>
-                <Td>{new Date(s.data).toLocaleDateString("it-IT")}</Td>
-                <Td>{s.ora}</Td>
-                <Td>{s.categoria}</Td>
-                <Td>{s.sala}</Td>
-                <Td>{s.descrizione}</Td>
+        {segnalazioniFiltrate.length === 0 ? (
+          <Text>Nessuna segnalazione trovata</Text>
+        ) : (
+          <Table>
+            <Thead>
+              <Tr>
+                <Th>ID</Th>
+                <Th>Data</Th>
+                <Th>Ora</Th>
+                <Th>Categoria</Th>
+                <Th>Sala</Th>
+                <Th>Descrizione</Th>
               </Tr>
-            ))}
-          </Tbody>
-        </Table>
+            </Thead>
+            <Tbody>
+              {segnalazioniFiltrate.map((s) => (
+                <Tr key={s.id}>
+                  <Td>{s.id}</Td>
+                  <Td>
+                    {s.data
+                      ? new Date(s.data).toLocaleDateString("it-IT")
+                      : ""}
+                  </Td>
+                  <Td>{s.ora}</Td>
+                  <Td>{s.categoria || "-"}</Td>
+                  <Td>{s.sala || "-"}</Td>
+                  <Td>{s.descrizione}</Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+        )}
       </Box>
     </Flex>
   );
