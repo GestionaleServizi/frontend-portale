@@ -1,34 +1,22 @@
-// src/ProtectedRoute.tsx
 import React from "react";
 import { Navigate } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
 
-export function getToken() {
-  return localStorage.getItem("token");
+interface ProtectedRouteProps {
+  children: JSX.Element;
+  ruolo?: "admin" | "operatore"; // opzionale, se vuoi controllare i ruoli
 }
 
-export function getUser() {
-  const userStr = localStorage.getItem("user");
-  return userStr ? JSON.parse(userStr) : null;
-}
+export default function ProtectedRoute({ children, ruolo }: ProtectedRouteProps) {
+  const { token, user } = useAuth();
 
-export default function ProtectedRoute({
-  children,
-  ruolo,
-}: {
-  children: React.ReactNode;
-  ruolo?: string; // 👈 opzionale, se non lo passi basta il token
-}) {
-  const token = getToken();
-  const user = getUser();
-
-  if (!token || !user) {
-    return <Navigate to="/login" replace />;
+  if (!token) {
+    return <Navigate to="/" replace />;
   }
 
-  // Se passo un ruolo, verifico che corrisponda
-  if (ruolo && user.ruolo !== ruolo) {
-    return <Navigate to="/login" replace />;
+  if (ruolo && user?.ruolo !== ruolo) {
+    return <Navigate to="/" replace />;
   }
 
-  return <>{children}</>;
+  return children;
 }
