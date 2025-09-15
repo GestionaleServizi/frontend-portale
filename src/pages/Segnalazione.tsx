@@ -16,7 +16,6 @@ import {
   HStack,
   Select,
   Input,
-  Textarea,
   useToast,
   VStack,
 } from "@chakra-ui/react";
@@ -31,23 +30,40 @@ type Segnalazione = {
 };
 
 type Categoria = { id: number; nome_categoria: string };
+type Cliente = { id: number; nome_sala: string };
 
 export default function Segnalazione() {
   const { token, user, logout } = useAuth();
   const [segnalazioni, setSegnalazioni] = useState<Segnalazione[]>([]);
   const [categorie, setCategorie] = useState<Categoria[]>([]);
-
-  const [data, setData] = useState("");
-  const [ora, setOra] = useState("");
-  const [categoriaId, setCategoriaId] = useState("");
-  const [descrizione, setDescrizione] = useState("");
-
   const [filtroData, setFiltroData] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("");
-
+  const [salaNome, setSalaNome] = useState<string>("N/A");
   const toast = useToast();
 
-  // 📌 Carica segnalazioni e categorie
+  // Recupera nome sala dall'ID cliente
+  useEffect(() => {
+    const fetchSala = async () => {
+      if (user?.cliente_id) {
+        try {
+          const res = await fetch(
+            `${import.meta.env.VITE_API_BASE_URL}/clienti/${user.cliente_id}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          if (res.ok) {
+            const data: Cliente = await res.json();
+            setSalaNome(data.nome_sala || "N/A");
+          }
+        } catch {
+          setSalaNome("N/A");
+        }
+      }
+    };
+
+    fetchSala();
+  }, [user, token]);
+
+  // Carica dati
   const loadData = async () => {
     try {
       const [segRes, catRes] = await Promise.all([
@@ -73,42 +89,7 @@ export default function Segnalazione() {
     loadData();
   }, []);
 
-  // 📌 Inserisci nuova segnalazione
-  const handleInsert = async () => {
-    if (!data || !ora || !categoriaId || !descrizione) {
-      toast({ title: "Compila tutti i campi", status: "warning" });
-      return;
-    }
-
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/segnalazioni`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          data,
-          ora,
-          descrizione,
-          categoria_id: categoriaId,
-        }),
-      });
-
-      if (!res.ok) throw new Error("Errore inserimento");
-
-      toast({ title: "Segnalazione inserita", status: "success" });
-      setData("");
-      setOra("");
-      setCategoriaId("");
-      setDescrizione("");
-      loadData();
-    } catch {
-      toast({ title: "Errore nell'inserimento", status: "error" });
-    }
-  };
-
-  // 📌 Filtri
+  // Filtri
   const segnalazioniFiltrate = (segnalazioni || []).filter((s) => {
     const dataMatch = filtroData ? s.data.startsWith(filtroData) : true;
     const catMatch = filtroCategoria ? s.categoria === filtroCategoria : true;
@@ -117,49 +98,17 @@ export default function Segnalazione() {
 
   return (
     <Flex minH="100vh" bg="gray.50" direction="column" p={8}>
-      {/* Header */}
+      {/* Header con logo, utente e sala */}
       <VStack spacing={2} mb={6}>
-        <img src="/logo.png" alt="Logo" width="120" />
-        <Heading>Gestione Segnalazioni</Heading>
+        <img src="/servizinet_logo.png" alt="Logo" width="120" />
+        <Heading>Inserimento Segnalazioni</Heading>
         <Text>
-          👤 {user?.email} | 🏢 {user?.sala || "N/A"}
+          👤 {user?.email} | 🏢 {salaNome}
         </Text>
         <Button colorScheme="red" size="sm" onClick={logout}>
           Logout
         </Button>
       </VStack>
-
-      {/* Form inserimento */}
-      <Box bg="white" p={6} mb={6} borderRadius="lg" shadow="md">
-        <Heading size="md" mb={4}>
-          Nuova Segnalazione
-        </Heading>
-        <HStack spacing={4} mb={4}>
-          <Input type="date" value={data} onChange={(e) => setData(e.target.value)} />
-          <Input type="time" value={ora} onChange={(e) => setOra(e.target.value)} />
-          <Select
-            placeholder="Seleziona categoria"
-            value={categoriaId}
-            onChange={(e) => setCategoriaId(e.target.value)}
-          >
-            {(categorie || []).map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nome_categoria}
-              </option>
-            ))}
-          </Select>
-        </HStack>
-        <Textarea
-          placeholder="Descrizione..."
-          value={descrizione}
-          onChange={(e) => setDescrizione(e.target.value)}
-          rows={5}
-          mb={4}
-        />
-        <Button colorScheme="blue" onClick={handleInsert}>
-          Inserisci
-        </Button>
-      </Box>
 
       {/* Filtri */}
       <HStack mb={4} spacing={4}>
