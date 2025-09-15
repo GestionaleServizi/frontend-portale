@@ -18,12 +18,11 @@ import {
   Input,
   useToast,
   VStack,
-  Spinner,
 } from "@chakra-ui/react";
 
 type Segnalazione = {
   id: number;
-  data: string;
+  data: string;        // ISO date string
   ora: string;
   descrizione: string;
   categoria?: string;
@@ -36,55 +35,42 @@ export default function Segnalazione() {
   const { token, user, logout } = useAuth();
   const [segnalazioni, setSegnalazioni] = useState<Segnalazione[]>([]);
   const [categorie, setCategorie] = useState<Categoria[]>([]);
-  const [loading, setLoading] = useState(true);
   const [filtroData, setFiltroData] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("");
   const toast = useToast();
 
-  const loadData = async () => {
-    try {
-      const [segRes, catRes] = await Promise.all([
-        fetch(`${import.meta.env.VITE_API_BASE_URL}/segnalazioni`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${import.meta.env.VITE_API_BASE_URL}/categorie`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-      ]);
-
-      const segData = await segRes.json();
-      const catData = await catRes.json();
-
-      console.log("📥 Segnalazioni:", segData);
-      console.log("📥 Categorie:", catData);
-
-      setSegnalazioni(Array.isArray(segData) ? segData : []);
-      setCategorie(Array.isArray(catData) ? catData : []);
-    } catch (err) {
-      console.error("Errore caricamento dati:", err);
-      toast({ title: "Errore caricamento dati", status: "error" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    loadData();
-  }, []);
+    const loadData = async () => {
+      try {
+        const [segRes, catRes] = await Promise.all([
+          fetch(`${import.meta.env.VITE_API_BASE_URL}/segnalazioni`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch(`${import.meta.env.VITE_API_BASE_URL}/categorie`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
 
-  const segnalazioniFiltrate = segnalazioni.filter((s) => {
+        if (!segRes.ok || !catRes.ok) throw new Error("fetch failed");
+
+        const segData = await segRes.json();
+        const catData = await catRes.json();
+
+        setSegnalazioni(Array.isArray(segData) ? segData : []);
+        setCategorie(Array.isArray(catData) ? catData : []);
+      } catch {
+        toast({ title: "Errore caricamento dati", status: "error" });
+      }
+    };
+
+    loadData();
+  }, [token, toast]);
+
+  const segnalazioniFiltrate = (segnalazioni || []).filter((s) => {
     const dataMatch = filtroData ? s.data?.startsWith(filtroData) : true;
     const catMatch = filtroCategoria ? s.categoria === filtroCategoria : true;
     return dataMatch && catMatch;
   });
-
-  if (loading) {
-    return (
-      <Flex minH="100vh" justify="center" align="center">
-        <Spinner size="xl" />
-      </Flex>
-    );
-  }
 
   return (
     <Flex minH="100vh" bg="gray.50" direction="column" p={8}>
@@ -112,15 +98,11 @@ export default function Segnalazione() {
           value={filtroCategoria}
           onChange={(e) => setFiltroCategoria(e.target.value)}
         >
-          {Array.isArray(categorie) && categorie.length > 0 ? (
-            categorie.map((c) => (
-              <option key={c.id} value={c.nome_categoria}>
-                {c.nome_categoria}
-              </option>
-            ))
-          ) : (
-            <option disabled>Nessuna categoria disponibile</option>
-          )}
+          {(categorie || []).map((c) => (
+            <option key={c.id} value={c.nome_categoria}>
+              {c.nome_categoria}
+            </option>
+          ))}
         </Select>
         <Button
           onClick={() => {
@@ -134,38 +116,30 @@ export default function Segnalazione() {
 
       {/* Tabella */}
       <Box bg="white" p={6} borderRadius="lg" shadow="md">
-        {segnalazioniFiltrate.length === 0 ? (
-          <Text>Nessuna segnalazione trovata</Text>
-        ) : (
-          <Table>
-            <Thead>
-              <Tr>
-                <Th>ID</Th>
-                <Th>Data</Th>
-                <Th>Ora</Th>
-                <Th>Categoria</Th>
-                <Th>Sala</Th>
-                <Th>Descrizione</Th>
+        <Table>
+          <Thead>
+            <Tr>
+              <Th>ID</Th>
+              <Th>Data</Th>
+              <Th>Ora</Th>
+              <Th>Categoria</Th>
+              <Th>Sala</Th>
+              <Th>Descrizione</Th>
+            </Tr>
+          </Thead>
+          <Tbody>
+            {(segnalazioniFiltrate || []).map((s) => (
+              <Tr key={s.id}>
+                <Td>{s.id}</Td>
+                <Td>{new Date(s.data).toLocaleDateString("it-IT")}</Td>
+                <Td>{s.ora}</Td>
+                <Td>{s.categoria}</Td>
+                <Td>{s.sala}</Td>
+                <Td>{s.descrizione}</Td>
               </Tr>
-            </Thead>
-            <Tbody>
-              {segnalazioniFiltrate.map((s) => (
-                <Tr key={s.id}>
-                  <Td>{s.id}</Td>
-                  <Td>
-                    {s.data
-                      ? new Date(s.data).toLocaleDateString("it-IT")
-                      : ""}
-                  </Td>
-                  <Td>{s.ora}</Td>
-                  <Td>{s.categoria || "-"}</Td>
-                  <Td>{s.sala || "-"}</Td>
-                  <Td>{s.descrizione}</Td>
-                </Tr>
-              ))}
-            </Tbody>
-          </Table>
-        )}
+            ))}
+          </Tbody>
+        </Table>
       </Box>
     </Flex>
   );
