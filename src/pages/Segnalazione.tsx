@@ -31,43 +31,36 @@ type Segnalazione = {
 };
 
 type Categoria = { id: number; nome_categoria: string };
-type Cliente = { id: number; nome_sala: string };
 
 export default function Segnalazione() {
   const { token, user, logout } = useAuth();
   const [segnalazioni, setSegnalazioni] = useState<Segnalazione[]>([]);
   const [categorie, setCategorie] = useState<Categoria[]>([]);
-  const [cliente, setCliente] = useState<Cliente | null>(null);
-
   const [filtroData, setFiltroData] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("");
-
-  const [descrizione, setDescrizione] = useState("");
+  const [data, setData] = useState("");
+  const [ora, setOra] = useState("");
   const [categoriaId, setCategoriaId] = useState("");
+  const [descrizione, setDescrizione] = useState("");
   const toast = useToast();
 
   // Carica dati
   const loadData = async () => {
     try {
-      const [segRes, catRes, cliRes] = await Promise.all([
+      const [segRes, catRes] = await Promise.all([
         fetch(`${import.meta.env.VITE_API_BASE_URL}/segnalazioni`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
         fetch(`${import.meta.env.VITE_API_BASE_URL}/categorie`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch(`${import.meta.env.VITE_API_BASE_URL}/me/cliente`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
       ]);
 
       const segData = await segRes.json();
       const catData = await catRes.json();
-      const cliData = await cliRes.json();
 
       setSegnalazioni(Array.isArray(segData) ? segData : []);
       setCategorie(Array.isArray(catData) ? catData : []);
-      setCliente(cliData || null);
     } catch {
       toast({ title: "Errore caricamento dati", status: "error" });
     }
@@ -79,16 +72,12 @@ export default function Segnalazione() {
 
   // Inserisci nuova segnalazione
   const handleSubmit = async () => {
-    if (!descrizione || !categoriaId) {
-      toast({ title: "Compila tutti i campi", status: "warning" });
-      return;
-    }
-
-    const oggi = new Date();
-    const data = oggi.toISOString().split("T")[0];
-    const ora = oggi.toTimeString().split(" ")[0].slice(0, 5);
-
     try {
+      if (!data || !ora || !categoriaId || !descrizione) {
+        toast({ title: "Compila tutti i campi", status: "warning" });
+        return;
+      }
+
       const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/segnalazioni`, {
         method: "POST",
         headers: {
@@ -103,11 +92,13 @@ export default function Segnalazione() {
         }),
       });
 
-      if (!res.ok) throw new Error("Errore inserimento");
+      if (!res.ok) throw new Error("Errore inserimento segnalazione");
 
       toast({ title: "Segnalazione inserita", status: "success" });
-      setDescrizione("");
+      setData("");
+      setOra("");
       setCategoriaId("");
+      setDescrizione("");
       loadData();
     } catch {
       toast({ title: "Errore inserimento segnalazione", status: "error" });
@@ -123,24 +114,31 @@ export default function Segnalazione() {
 
   return (
     <Flex minH="100vh" bg="gray.50" direction="column" p={8}>
-      {/* Header */}
+      {/* Header con logo, utente e sala */}
       <VStack spacing={2} mb={6}>
         <img src="/logo.png" alt="Logo" width="120" />
         <Heading>Inserimento Segnalazioni</Heading>
         <Text>
-          👤 {user?.email} | 🏢 {cliente?.nome_sala || "N/A"}
+          👤 {user?.email} | 🏢 {user?.sala || "N/A"}
         </Text>
         <Button colorScheme="red" size="sm" onClick={logout}>
           Logout
         </Button>
       </VStack>
 
-      {/* Form nuova segnalazione */}
+      {/* Form inserimento */}
       <Box bg="white" p={6} borderRadius="lg" shadow="md" mb={6}>
-        <Heading size="md" mb={4}>
-          Nuova Segnalazione
-        </Heading>
-        <VStack spacing={4} align="stretch">
+        <HStack spacing={4} mb={4}>
+          <Input
+            type="date"
+            value={data}
+            onChange={(e) => setData(e.target.value)}
+          />
+          <Input
+            type="time"
+            value={ora}
+            onChange={(e) => setOra(e.target.value)}
+          />
           <Select
             placeholder="Seleziona categoria"
             value={categoriaId}
@@ -152,16 +150,16 @@ export default function Segnalazione() {
               </option>
             ))}
           </Select>
-          <Textarea
-            placeholder="Descrizione"
-            value={descrizione}
-            onChange={(e) => setDescrizione(e.target.value)}
-            rows={4}
-          />
-          <Button colorScheme="blue" onClick={handleSubmit}>
-            Inserisci
-          </Button>
-        </VStack>
+        </HStack>
+        <Textarea
+          placeholder="Descrizione"
+          value={descrizione}
+          onChange={(e) => setDescrizione(e.target.value)}
+          rows={4}
+        />
+        <Button colorScheme="blue" mt={4} onClick={handleSubmit}>
+          ➕ Inserisci Segnalazione
+        </Button>
       </Box>
 
       {/* Filtri */}
@@ -182,7 +180,12 @@ export default function Segnalazione() {
             </option>
           ))}
         </Select>
-        <Button onClick={() => { setFiltroData(""); setFiltroCategoria(""); }}>
+        <Button
+          onClick={() => {
+            setFiltroData("");
+            setFiltroCategoria("");
+          }}
+        >
           Reset Filtri
         </Button>
       </HStack>
