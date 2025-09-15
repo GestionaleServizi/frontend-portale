@@ -129,7 +129,7 @@ export default function Segnalazione() {
     <Flex minH="100vh" bg="gray.50" direction="column" p={8}>
       {/* Header */}
       <VStack spacing={2} mb={6}>
-        <img src="/servizi.png" alt="Logo" width="120" /> {/* ✅ logo corretto */}
+        <img src="/servizinet_logo.png" alt="Logo" width="120" /> {/* ✅ logo corretto */}
         <Heading>Inserimento Segnalazione</Heading>
         <Text>
           👤 {user?.email} | 🏢 {cliente?.nome_sala || "N/A"}
