@@ -23,8 +23,8 @@ import {
 
 type Segnalazione = {
   id: number;
-  data: string;        // YYYY-MM-DD
-  ora: string;         // HH:mm
+  data: string;
+  ora: string;
   descrizione: string;
   categoria?: string;
   sala?: string;
@@ -44,9 +44,12 @@ export default function Segnalazione() {
 
   const [descrizione, setDescrizione] = useState("");
   const [categoriaId, setCategoriaId] = useState("");
+  const [ora, setOra] = useState("");
+  const [data, setData] = useState("");
+
   const toast = useToast();
 
-  // 🔹 Carica segnalazioni + categorie + cliente (per mostrare la sala)
+  // Carica dati
   const loadData = async () => {
     try {
       const [segRes, catRes, cliRes] = await Promise.all([
@@ -77,44 +80,45 @@ export default function Segnalazione() {
     loadData();
   }, []);
 
-  // 🔹 Inserisci nuova segnalazione
+  // Inserisci nuova segnalazione
   const handleSubmit = async () => {
-    if (!descrizione || !categoriaId) {
+    if (!descrizione || !categoriaId || !data || !ora) {
       toast({ title: "Compila tutti i campi", status: "warning" });
       return;
     }
 
-    const oggi = new Date();
-    const data = oggi.toISOString().split("T")[0];      // YYYY-MM-DD
-    const ora = oggi.toTimeString().slice(0, 5);        // HH:mm
-
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/segnalazioni`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          data,
-          ora,
-          descrizione,
-          categoria_id: categoriaId,
-        }),
-      });
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/segnalazioni`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            data,
+            ora,
+            descrizione,
+            categoria_id: categoriaId,
+          }),
+        }
+      );
 
       if (!res.ok) throw new Error("Errore inserimento");
 
       toast({ title: "Segnalazione inserita", status: "success" });
       setDescrizione("");
       setCategoriaId("");
+      setData("");
+      setOra("");
       loadData();
     } catch {
       toast({ title: "Errore inserimento segnalazione", status: "error" });
     }
   };
 
-  // 🔹 Applica filtri
+  // Filtri
   const segnalazioniFiltrate = (segnalazioni || []).filter((s) => {
     const dataMatch = filtroData ? s.data.startsWith(filtroData) : true;
     const catMatch = filtroCategoria ? s.categoria === filtroCategoria : true;
@@ -125,7 +129,7 @@ export default function Segnalazione() {
     <Flex minH="100vh" bg="gray.50" direction="column" p={8}>
       {/* Header */}
       <VStack spacing={2} mb={6}>
-        <img src="/logo.png" alt="Logo" width="120" />
+        <img src="/servizi.png" alt="Logo" width="120" /> {/* ✅ logo corretto */}
         <Heading>Inserimento Segnalazione</Heading>
         <Text>
           👤 {user?.email} | 🏢 {cliente?.nome_sala || "N/A"}
@@ -141,17 +145,29 @@ export default function Segnalazione() {
           Nuova Segnalazione
         </Heading>
         <VStack spacing={4} align="stretch">
-          <Select
-            placeholder="Seleziona categoria"
-            value={categoriaId}
-            onChange={(e) => setCategoriaId(e.target.value)}
-          >
-            {(categorie || []).map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nome_categoria}
-              </option>
-            ))}
-          </Select>
+          <HStack>
+            <Input
+              type="date"
+              value={data}
+              onChange={(e) => setData(e.target.value)}
+            />
+            <Input
+              type="time"
+              value={ora}
+              onChange={(e) => setOra(e.target.value)}
+            />
+            <Select
+              placeholder="Seleziona categoria"
+              value={categoriaId}
+              onChange={(e) => setCategoriaId(e.target.value)}
+            >
+              {(categorie || []).map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nome_categoria}
+                </option>
+              ))}
+            </Select>
+          </HStack>
           <Textarea
             placeholder="Descrizione"
             value={descrizione}
@@ -182,7 +198,12 @@ export default function Segnalazione() {
             </option>
           ))}
         </Select>
-        <Button onClick={() => { setFiltroData(""); setFiltroCategoria(""); }}>
+        <Button
+          onClick={() => {
+            setFiltroData("");
+            setFiltroCategoria("");
+          }}
+        >
           Reset Filtri
         </Button>
       </HStack>
@@ -204,9 +225,8 @@ export default function Segnalazione() {
             {(segnalazioniFiltrate || []).map((s) => (
               <Tr key={s.id}>
                 <Td>{s.id}</Td>
-                {/* Mostra sempre data e ora */}
-                <Td>{s.data ? new Date(s.data).toLocaleDateString("it-IT") : "-"}</Td>
-                <Td>{s.ora || "-"}</Td>
+                <Td>{new Date(s.data).toLocaleDateString("it-IT")}</Td>
+                <Td>{s.ora}</Td>
                 <Td>{s.categoria}</Td>
                 <Td>{s.sala}</Td>
                 <Td>{s.descrizione}</Td>
