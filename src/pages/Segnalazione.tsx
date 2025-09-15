@@ -119,7 +119,7 @@ export default function Segnalazione() {
         <img src="/logo.png" alt="Logo" width="120" />
         <Heading>Inserimento Segnalazioni</Heading>
         <Text>
-          👤 {user?.email} | 🏢 {user?.sala || "N/A"}
+          👤 {user?.email} | 🏢 {cliente?.nome_sala || "N/A"}
         </Text>
         <Button colorScheme="red" size="sm" onClick={logout}>
           Logout
