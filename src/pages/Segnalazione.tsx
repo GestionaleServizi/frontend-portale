@@ -23,46 +23,51 @@ import {
 
 type Segnalazione = {
   id: number;
-  data: string;
-  ora: string;
+  data: string;        // YYYY-MM-DD
+  ora: string;         // HH:mm
   descrizione: string;
   categoria?: string;
   sala?: string;
 };
 
 type Categoria = { id: number; nome_categoria: string };
+type Cliente = { id: number; nome_sala: string };
 
 export default function Segnalazione() {
   const { token, user, logout } = useAuth();
   const [segnalazioni, setSegnalazioni] = useState<Segnalazione[]>([]);
   const [categorie, setCategorie] = useState<Categoria[]>([]);
+  const [cliente, setCliente] = useState<Cliente | null>(null);
+
   const [filtroData, setFiltroData] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("");
-  const [data, setData] = useState(new Date().toISOString().slice(0, 10));
-  const [ora, setOra] = useState(
-    new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })
-  );
-  const [categoriaId, setCategoriaId] = useState("");
+
   const [descrizione, setDescrizione] = useState("");
+  const [categoriaId, setCategoriaId] = useState("");
   const toast = useToast();
 
-  // 📌 Carica dati segnalazioni e categorie
+  // 🔹 Carica segnalazioni + categorie + cliente (per mostrare la sala)
   const loadData = async () => {
     try {
-      const [segRes, catRes] = await Promise.all([
+      const [segRes, catRes, cliRes] = await Promise.all([
         fetch(`${import.meta.env.VITE_API_BASE_URL}/segnalazioni`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
         fetch(`${import.meta.env.VITE_API_BASE_URL}/categorie`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
+        fetch(`${import.meta.env.VITE_API_BASE_URL}/me/cliente`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
       ]);
 
       const segData = await segRes.json();
       const catData = await catRes.json();
+      const cliData = await cliRes.json();
 
       setSegnalazioni(Array.isArray(segData) ? segData : []);
       setCategorie(Array.isArray(catData) ? catData : []);
+      setCliente(cliData || null);
     } catch {
       toast({ title: "Errore caricamento dati", status: "error" });
     }
@@ -72,12 +77,16 @@ export default function Segnalazione() {
     loadData();
   }, []);
 
-  // 📌 Inserisci nuova segnalazione
+  // 🔹 Inserisci nuova segnalazione
   const handleSubmit = async () => {
-    if (!categoriaId || !descrizione) {
+    if (!descrizione || !categoriaId) {
       toast({ title: "Compila tutti i campi", status: "warning" });
       return;
     }
+
+    const oggi = new Date();
+    const data = oggi.toISOString().split("T")[0];      // YYYY-MM-DD
+    const ora = oggi.toTimeString().slice(0, 5);        // HH:mm
 
     try {
       const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/segnalazioni`, {
@@ -94,20 +103,18 @@ export default function Segnalazione() {
         }),
       });
 
-      if (!res.ok) throw new Error("Errore nell'inserimento");
+      if (!res.ok) throw new Error("Errore inserimento");
 
       toast({ title: "Segnalazione inserita", status: "success" });
       setDescrizione("");
       setCategoriaId("");
-      setData(new Date().toISOString().slice(0, 10));
-      setOra(new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" }));
       loadData();
     } catch {
-      toast({ title: "Errore nell'inserimento", status: "error" });
+      toast({ title: "Errore inserimento segnalazione", status: "error" });
     }
   };
 
-  // 📌 Filtri tabella
+  // 🔹 Applica filtri
   const segnalazioniFiltrate = (segnalazioni || []).filter((s) => {
     const dataMatch = filtroData ? s.data.startsWith(filtroData) : true;
     const catMatch = filtroCategoria ? s.categoria === filtroCategoria : true;
@@ -116,12 +123,12 @@ export default function Segnalazione() {
 
   return (
     <Flex minH="100vh" bg="gray.50" direction="column" p={8}>
-      {/* Header con logo, utente e sala */}
+      {/* Header */}
       <VStack spacing={2} mb={6}>
-        <img src="/servizinet_logo.png" alt="Logo" width="120" />
+        <img src="/logo.png" alt="Logo" width="120" />
         <Heading>Inserimento Segnalazione</Heading>
         <Text>
-          👤 {user?.email} | 🏢 {user?.cliente?.nome_sala || "N/A"}
+          👤 {user?.email} | 🏢 {cliente?.nome_sala || "N/A"}
         </Text>
         <Button colorScheme="red" size="sm" onClick={logout}>
           Logout
@@ -133,42 +140,43 @@ export default function Segnalazione() {
         <Heading size="md" mb={4}>
           Nuova Segnalazione
         </Heading>
-        <HStack spacing={4} mb={4}>
-          <Input type="date" value={data} onChange={(e) => setData(e.target.value)} />
-          <Input type="time" value={ora} onChange={(e) => setOra(e.target.value)} />
+        <VStack spacing={4} align="stretch">
           <Select
             placeholder="Seleziona categoria"
             value={categoriaId}
             onChange={(e) => setCategoriaId(e.target.value)}
           >
-            {categorie.map((c) => (
+            {(categorie || []).map((c) => (
               <option key={c.id} value={c.id}>
                 {c.nome_categoria}
               </option>
             ))}
           </Select>
-        </HStack>
-        <Textarea
-          placeholder="Descrizione"
-          value={descrizione}
-          onChange={(e) => setDescrizione(e.target.value)}
-          mb={4}
-          rows={4}
-        />
-        <Button colorScheme="blue" onClick={handleSubmit}>
-          Inserisci Segnalazione
-        </Button>
+          <Textarea
+            placeholder="Descrizione"
+            value={descrizione}
+            onChange={(e) => setDescrizione(e.target.value)}
+            rows={4}
+          />
+          <Button colorScheme="blue" onClick={handleSubmit}>
+            Inserisci
+          </Button>
+        </VStack>
       </Box>
 
-      {/* Filtri storico */}
+      {/* Filtri */}
       <HStack mb={4} spacing={4}>
-        <Input type="date" value={filtroData} onChange={(e) => setFiltroData(e.target.value)} />
+        <Input
+          type="date"
+          value={filtroData}
+          onChange={(e) => setFiltroData(e.target.value)}
+        />
         <Select
           placeholder="Tutte le categorie"
           value={filtroCategoria}
           onChange={(e) => setFiltroCategoria(e.target.value)}
         >
-          {categorie.map((c) => (
+          {(categorie || []).map((c) => (
             <option key={c.id} value={c.nome_categoria}>
               {c.nome_categoria}
             </option>
@@ -179,7 +187,7 @@ export default function Segnalazione() {
         </Button>
       </HStack>
 
-      {/* Tabella storico */}
+      {/* Tabella segnalazioni */}
       <Box bg="white" p={6} borderRadius="lg" shadow="md">
         <Table>
           <Thead>
@@ -193,11 +201,12 @@ export default function Segnalazione() {
             </Tr>
           </Thead>
           <Tbody>
-            {segnalazioniFiltrate.map((s) => (
+            {(segnalazioniFiltrate || []).map((s) => (
               <Tr key={s.id}>
                 <Td>{s.id}</Td>
-                <Td>{new Date(s.data).toLocaleDateString("it-IT")}</Td>
-                <Td>{s.ora}</Td>
+                {/* Mostra sempre data e ora */}
+                <Td>{s.data ? new Date(s.data).toLocaleDateString("it-IT") : "-"}</Td>
+                <Td>{s.ora || "-"}</Td>
                 <Td>{s.categoria}</Td>
                 <Td>{s.sala}</Td>
                 <Td>{s.descrizione}</Td>
