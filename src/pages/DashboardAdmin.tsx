@@ -14,11 +14,11 @@ import {
   Td,
   Button,
   HStack,
-  VStack,
   Select,
   Input,
   useToast,
   Image,
+  VStack,
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
 import { FiUsers, FiFolder, FiBriefcase, FiLogOut, FiFileText } from "react-icons/fi";
@@ -92,94 +92,25 @@ export default function DashboardAdmin() {
   const kpiClienti = filtroCliente ? 1 : clienti.length;
   const kpiUtenti = utenti.length;
 
-  // Esporta CSV
-  const esportaCSV = () => {
-    const header = ["ID", "Data", "Ora", "Categoria", "Sala", "Descrizione"];
-    const rows = segnalazioniFiltrate.map((s) => [
-      s.id,
-      new Date(s.data).toLocaleDateString("it-IT"),
-      s.ora,
-      s.categoria || "",
-      s.sala || "",
-      s.descrizione || "",
-    ]);
-    const csvContent =
-      "data:text/csv;charset=utf-8," +
-      [header, ...rows].map((e) => e.join(";")).join("\n");
-
-    const link = document.createElement("a");
-    link.setAttribute("href", encodeURI(csvContent));
-    link.setAttribute("download", "segnalazioni.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  // Esporta PDF
-  const esportaPDF = () => {
-    const printContent = `
-      <h2>Segnalazioni</h2>
-      <table border="1" cellspacing="0" cellpadding="4">
-        <thead>
-          <tr>
-            <th>ID</th><th>Data</th><th>Ora</th>
-            <th>Categoria</th><th>Sala</th><th>Descrizione</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${segnalazioniFiltrate
-            .map(
-              (s) => `
-            <tr>
-              <td>${s.id}</td>
-              <td>${new Date(s.data).toLocaleDateString("it-IT")}</td>
-              <td>${s.ora}</td>
-              <td>${s.categoria || ""}</td>
-              <td>${s.sala || ""}</td>
-              <td>${s.descrizione || ""}</td>
-            </tr>`
-            )
-            .join("")}
-        </tbody>
-      </table>
-    `;
-    const newWin = window.open("", "_blank");
-    newWin!.document.write(printContent);
-    newWin!.print();
-    newWin!.close();
-  };
-
   return (
     <Flex minH="100vh" bg="gray.50" direction="column" p={6}>
       {/* Header */}
-      <Flex justify="space-between" align="center" mb={8}>
+      <Flex justify="space-between" align="center" mb={4}>
         <Heading size="lg">📊 Dashboard Amministratore</Heading>
         <HStack spacing={3}>
-          <Button
-            leftIcon={<FiUsers />}
-            colorScheme="blue"
-            onClick={() => nav("/utenti")}
-          >
+          <Button leftIcon={<FiUsers />} colorScheme="blue" onClick={() => nav("/utenti")}>
             Utenti
           </Button>
-          <Button
-            leftIcon={<FiFolder />}
-            colorScheme="purple"
-            onClick={() => nav("/categorie")}
-          >
+          <Button leftIcon={<FiFolder />} colorScheme="purple" onClick={() => nav("/categorie")}>
             Categorie
           </Button>
-          <Button
-            leftIcon={<FiBriefcase />}
-            colorScheme="teal"
-            onClick={() => nav("/clienti")}
-          >
+          <Button leftIcon={<FiBriefcase />} colorScheme="teal" onClick={() => nav("/clienti")}>
             Clienti
           </Button>
-          <Button leftIcon={<FiFileText />} colorScheme="green" onClick={esportaCSV}>
+          <Button leftIcon={<FiFileText />} colorScheme="green">
             CSV
           </Button>
-          <Button leftIcon={<FiFileText />} colorScheme="blue" onClick={esportaPDF}>
+          <Button leftIcon={<FiFileText />} colorScheme="blue">
             PDF
           </Button>
           <Button leftIcon={<FiLogOut />} colorScheme="red" onClick={logout}>
@@ -188,7 +119,12 @@ export default function DashboardAdmin() {
         </HStack>
       </Flex>
 
-      {/* KPI in stile card */}
+      {/* Logo al centro */}
+      <Flex justify="center" mb={6}>
+        <Image src="/logo.png" alt="Logo" boxSize="180px" objectFit="contain" />
+      </Flex>
+
+      {/* KPI in card sotto al logo */}
       <HStack spacing={6} mb={6}>
         <Box flex="1" p={6} bg="white" borderRadius="lg" shadow="md" textAlign="center">
           <Text fontSize="sm" color="gray.500">📊 Segnalazioni</Text>
@@ -208,47 +144,24 @@ export default function DashboardAdmin() {
         </Box>
       </HStack>
 
-      {/* Logo grande al centro */}
-      <Flex justify="center" mb={8}>
-        <Image src="/logo.png" alt="Logo" boxSize="150px" objectFit="contain" />
-      </Flex>
-
       {/* Filtri */}
       <HStack mb={4} spacing={4}>
-        <Input
-          type="date"
-          value={filtroData}
-          onChange={(e) => setFiltroData(e.target.value)}
-        />
-        <Select
-          placeholder="Tutte le categorie"
-          value={filtroCategoria}
-          onChange={(e) => setFiltroCategoria(e.target.value)}
-        >
+        <Input type="date" value={filtroData} onChange={(e) => setFiltroData(e.target.value)} />
+        <Select placeholder="Tutte le categorie" value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)}>
           {categorie.map((c) => (
             <option key={c.id} value={c.nome_categoria}>
               {c.nome_categoria}
             </option>
           ))}
         </Select>
-        <Select
-          placeholder="Tutti i clienti"
-          value={filtroCliente}
-          onChange={(e) => setFiltroCliente(e.target.value)}
-        >
+        <Select placeholder="Tutti i clienti" value={filtroCliente} onChange={(e) => setFiltroCliente(e.target.value)}>
           {clienti.map((c) => (
             <option key={c.id} value={c.nome_sala}>
               {c.nome_sala}
             </option>
           ))}
         </Select>
-        <Button
-          onClick={() => {
-            setFiltroData("");
-            setFiltroCategoria("");
-            setFiltroCliente("");
-          }}
-        >
+        <Button onClick={() => { setFiltroData(""); setFiltroCategoria(""); setFiltroCliente(""); }}>
           Reset Filtri
         </Button>
       </HStack>
