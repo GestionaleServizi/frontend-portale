@@ -1,19 +1,20 @@
 // src/pages/ClientiPage.tsx
 import React, { useEffect, useState } from "react";
+import { useAuth } from "../hooks/useAuth";
 import {
   Box,
   Flex,
   Heading,
+  Button,
   Table,
   Thead,
   Tbody,
   Tr,
   Th,
   Td,
-  Button,
+  useToast,
   HStack,
   IconButton,
-  useToast,
   Modal,
   ModalOverlay,
   ModalContent,
@@ -28,9 +29,7 @@ import {
   Image,
 } from "@chakra-ui/react";
 import { AddIcon, EditIcon, DeleteIcon } from "@chakra-ui/icons";
-import { useAuth } from "../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { FiLogOut, FiHome } from "react-icons/fi";
 
 type Cliente = {
   id: number;
@@ -45,19 +44,16 @@ type Cliente = {
 export default function ClientiPage() {
   const { token, logout } = useAuth();
   const [clienti, setClienti] = useState<Cliente[]>([]);
-  const [clienteSelezionato, setClienteSelezionato] = useState<Cliente | null>(null);
-  const [formData, setFormData] = useState<Partial<Cliente>>({});
+  const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
-  const nav = useNavigate();
+  const navigate = useNavigate();
 
-  // Carica clienti
   const loadClienti = async () => {
     try {
       const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/clienti`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error("Errore caricamento clienti");
       setClienti(await res.json());
     } catch {
       toast({ title: "Errore caricamento clienti", status: "error" });
@@ -68,86 +64,85 @@ export default function ClientiPage() {
     loadClienti();
   }, []);
 
-  // Salva nuovo/modificato
-  const salvaCliente = async () => {
+  const handleSave = async () => {
+    if (!selectedCliente) return;
     try {
-      const metodo = clienteSelezionato ? "PUT" : "POST";
-      const url = clienteSelezionato
-        ? `${import.meta.env.VITE_API_BASE_URL}/clienti/${clienteSelezionato.id}`
+      const method = selectedCliente.id ? "PUT" : "POST";
+      const url = selectedCliente.id
+        ? `${import.meta.env.VITE_API_BASE_URL}/clienti/${selectedCliente.id}`
         : `${import.meta.env.VITE_API_BASE_URL}/clienti`;
 
-      const res = await fetch(url, {
-        method: metodo,
+      await fetch(url, {
+        method,
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(selectedCliente),
       });
-
-      if (!res.ok) throw new Error("Errore salvataggio cliente");
 
       toast({ title: "Cliente salvato", status: "success" });
       onClose();
-      setFormData({});
-      setClienteSelezionato(null);
       loadClienti();
     } catch {
-      toast({ title: "Impossibile salvare il cliente", status: "error" });
+      toast({ title: "Errore salvataggio cliente", status: "error" });
     }
   };
 
-  // Elimina
-  const eliminaCliente = async (id: number) => {
+  const handleDelete = async (id: number) => {
+    if (!confirm("Sei sicuro di voler eliminare questo cliente?")) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/clienti/${id}`, {
+      await fetch(`${import.meta.env.VITE_API_BASE_URL}/clienti/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error("Errore eliminazione");
       toast({ title: "Cliente eliminato", status: "info" });
       loadClienti();
     } catch {
-      toast({ title: "Impossibile eliminare il cliente", status: "error" });
+      toast({ title: "Errore eliminazione cliente", status: "error" });
     }
   };
 
   return (
-    <Flex minH="100vh" bg="gray.50" direction="column" p={6}>
-      {/* Header */}
-      <Flex justify="space-between" align="center" mb={4}>
+    <Flex minH="100vh" direction="column" bg="gray.50" p={8}>
+      {/* Header con titolo, logo e pulsanti */}
+      <Flex justify="space-between" align="center" mb={6}>
         <Heading size="lg">🏢 Gestione Clienti</Heading>
-        <HStack spacing={3}>
-          <Button leftIcon={<FiHome />} colorScheme="blue" onClick={() => nav("/dashboard")}>
-            Dashboard
+        <Image src="/servizinet_logo.png" alt="Logo" boxSize="80px" objectFit="contain" />
+        <HStack spacing={4}>
+          <Button colorScheme="blue" onClick={() => navigate("/dashboard")}>
+            📊 Dashboard
           </Button>
-          <Button leftIcon={<FiLogOut />} colorScheme="red" onClick={logout}>
-            Logout
+          <Button colorScheme="red" onClick={logout}>
+            🚪 Logout
           </Button>
         </HStack>
       </Flex>
 
-      {/* Logo al centro */}
-      <Flex justify="center" mb={6}>
-        <Image src="/servizinet_logo.png" alt="Logo" boxSize="240px" objectFit="contain" />
-      </Flex>
-
-      {/* Tabella */}
+      {/* Tabella clienti */}
       <Box bg="white" p={6} borderRadius="lg" shadow="md">
-        <Flex justify="space-between" align="center" mb={4}>
-          <Heading size="md">Elenco Clienti</Heading>
+        <Flex justify="space-between" mb={4}>
+          <Heading size="md">Lista Clienti</Heading>
           <Button
-            leftIcon={<AddIcon />}
             colorScheme="green"
+            leftIcon={<AddIcon />}
             onClick={() => {
-              setClienteSelezionato(null);
-              setFormData({});
+              setSelectedCliente({
+                id: 0,
+                nome_sala: "",
+                email: "",
+                referente: "",
+                telefono: "",
+                indirizzo: "",
+                orari_apertura: "",
+              });
               onOpen();
             }}
           >
-            Nuovo Cliente
+            Aggiungi Cliente
           </Button>
         </Flex>
+
         <Table>
           <Thead>
             <Tr>
@@ -174,19 +169,16 @@ export default function ClientiPage() {
                     <IconButton
                       aria-label="Modifica"
                       icon={<EditIcon />}
-                      size="sm"
                       onClick={() => {
-                        setClienteSelezionato(c);
-                        setFormData(c);
+                        setSelectedCliente(c);
                         onOpen();
                       }}
                     />
                     <IconButton
                       aria-label="Elimina"
                       icon={<DeleteIcon />}
-                      size="sm"
                       colorScheme="red"
-                      onClick={() => eliminaCliente(c.id)}
+                      onClick={() => handleDelete(c.id)}
                     />
                   </HStack>
                 </Td>
@@ -196,45 +188,93 @@ export default function ClientiPage() {
         </Table>
       </Box>
 
-      {/* Modal */}
+      {/* Modal per inserimento/modifica */}
       <Modal isOpen={isOpen} onClose={onClose}>
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>{clienteSelezionato ? "Modifica Cliente" : "Nuovo Cliente"}</ModalHeader>
+          <ModalHeader>
+            {selectedCliente?.id ? "Modifica Cliente" : "Nuovo Cliente"}
+          </ModalHeader>
           <ModalCloseButton />
           <ModalBody>
             <FormControl mb={3}>
               <FormLabel>Nome Sala</FormLabel>
-              <Input value={formData.nome_sala || ""} onChange={(e) => setFormData({ ...formData, nome_sala: e.target.value })} />
+              <Input
+                value={selectedCliente?.nome_sala || ""}
+                onChange={(e) =>
+                  setSelectedCliente({
+                    ...selectedCliente!,
+                    nome_sala: e.target.value,
+                  })
+                }
+              />
             </FormControl>
             <FormControl mb={3}>
               <FormLabel>Email</FormLabel>
-              <Input value={formData.email || ""} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+              <Input
+                value={selectedCliente?.email || ""}
+                onChange={(e) =>
+                  setSelectedCliente({
+                    ...selectedCliente!,
+                    email: e.target.value,
+                  })
+                }
+              />
             </FormControl>
             <FormControl mb={3}>
               <FormLabel>Referente</FormLabel>
-              <Input value={formData.referente || ""} onChange={(e) => setFormData({ ...formData, referente: e.target.value })} />
+              <Input
+                value={selectedCliente?.referente || ""}
+                onChange={(e) =>
+                  setSelectedCliente({
+                    ...selectedCliente!,
+                    referente: e.target.value,
+                  })
+                }
+              />
             </FormControl>
             <FormControl mb={3}>
               <FormLabel>Telefono</FormLabel>
-              <Input value={formData.telefono || ""} onChange={(e) => setFormData({ ...formData, telefono: e.target.value })} />
+              <Input
+                value={selectedCliente?.telefono || ""}
+                onChange={(e) =>
+                  setSelectedCliente({
+                    ...selectedCliente!,
+                    telefono: e.target.value,
+                  })
+                }
+              />
             </FormControl>
             <FormControl mb={3}>
               <FormLabel>Indirizzo</FormLabel>
-              <Input value={formData.indirizzo || ""} onChange={(e) => setFormData({ ...formData, indirizzo: e.target.value })} />
+              <Input
+                value={selectedCliente?.indirizzo || ""}
+                onChange={(e) =>
+                  setSelectedCliente({
+                    ...selectedCliente!,
+                    indirizzo: e.target.value,
+                  })
+                }
+              />
             </FormControl>
-            <FormControl mb={3}>
+            <FormControl>
               <FormLabel>Orari Apertura</FormLabel>
-              <Input value={formData.orari_apertura || ""} onChange={(e) => setFormData({ ...formData, orari_apertura: e.target.value })} />
+              <Input
+                value={selectedCliente?.orari_apertura || ""}
+                onChange={(e) =>
+                  setSelectedCliente({
+                    ...selectedCliente!,
+                    orari_apertura: e.target.value,
+                  })
+                }
+              />
             </FormControl>
           </ModalBody>
           <ModalFooter>
-            <Button colorScheme="blue" mr={3} onClick={salvaCliente}>
+            <Button colorScheme="blue" mr={3} onClick={handleSave}>
               Salva
             </Button>
-            <Button variant="ghost" onClick={onClose}>
-              Annulla
-            </Button>
+            <Button onClick={onClose}>Annulla</Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
