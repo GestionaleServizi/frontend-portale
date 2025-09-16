@@ -1,3 +1,4 @@
+// src/pages/DashboardAdmin.tsx
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 import {
@@ -16,23 +17,25 @@ import {
   Select,
   Input,
   useToast,
+  Image,
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
+import { FiUsers, FiFolder, FiBuilding, FiLogOut, FiFileText } from "react-icons/fi";
 
 type Segnalazione = {
   id: number;
   data: string;
   ora: string;
   descrizione: string;
-  categoria?: string;   // ← aggiornato
-  sala?: string;        // ← aggiornato
+  categoria?: string;
+  sala?: string;
 };
 
 type Categoria = { id: number; nome_categoria: string };
 type Cliente = { id: number; nome_sala: string };
 
 export default function DashboardAdmin() {
-  const { token } = useAuth();
+  const { token, logout } = useAuth();
   const [segnalazioni, setSegnalazioni] = useState<Segnalazione[]>([]);
   const [categorie, setCategorie] = useState<Categoria[]>([]);
   const [clienti, setClienti] = useState<Cliente[]>([]);
@@ -141,10 +144,35 @@ export default function DashboardAdmin() {
 
   return (
     <Flex minH="100vh" bg="gray.50" direction="column" p={8}>
-      <Heading mb={6}>📊 Dashboard Amministratore</Heading>
+      {/* Header con logo e pulsanti */}
+      <Flex justify="space-between" align="center" mb={8}>
+        <Box flex="1" textAlign="center">
+          <Image src="/servizinet_logo.png" alt="Logo" boxSize="120px" mx="auto" />
+        </Box>
+        <HStack spacing={3}>
+          <Button colorScheme="blue" leftIcon={<FiUsers />} onClick={() => nav("/utenti")}>
+            Utenti
+          </Button>
+          <Button colorScheme="purple" leftIcon={<FiFolder />} onClick={() => nav("/categorie")}>
+            Categorie
+          </Button>
+          <Button colorScheme="teal" leftIcon={<FiBuilding />} onClick={() => nav("/clienti")}>
+            Clienti
+          </Button>
+          <Button colorScheme="green" leftIcon={<FiFileText />} onClick={esportaCSV}>
+            CSV
+          </Button>
+          <Button colorScheme="blue" leftIcon={<FiFileText />} onClick={esportaPDF}>
+            PDF
+          </Button>
+          <Button colorScheme="red" leftIcon={<FiLogOut />} onClick={logout}>
+            Logout
+          </Button>
+        </HStack>
+      </Flex>
 
       {/* KPI */}
-      <HStack spacing={6} mb={6}>
+      <HStack spacing={6} mb={6} justify="center">
         <Box p={6} bg="white" borderRadius="lg" shadow="md" textAlign="center">
           <Text fontSize="sm">📊 Segnalazioni Totali</Text>
           <Heading size="lg">{segnalazioni.length}</Heading>
@@ -161,95 +189,6 @@ export default function DashboardAdmin() {
           <Text fontSize="sm">👥 Utenti</Text>
           <Heading size="lg">{utenti.length}</Heading>
         </Box>
-      </HStack>
-
-      {/* Filtri */}
-      <HStack mb={4} spacing={4}>
-        <Input
-          type="date"
-          value={filtroData}
-          onChange={(e) => setFiltroData(e.target.value)}
-        />
-        <Select
-          placeholder="Tutte le categorie"
-          value={filtroCategoria}
-          onChange={(e) => setFiltroCategoria(e.target.value)}
-        >
-          {categorie.map((c) => (
-            <option key={c.id} value={c.nome_categoria}>
-              {c.nome_categoria}
-            </option>
-          ))}
-        </Select>
-        <Select
-          placeholder="Tutti i clienti"
-          value={filtroCliente}
-          onChange={(e) => setFiltroCliente(e.target.value)}
-        >
-          {clienti.map((c) => (
-            <option key={c.id} value={c.nome_sala}>
-              {c.nome_sala}
-            </option>
-          ))}
-        </Select>
-        <Button
-          onClick={() => {
-            setFiltroData("");
-            setFiltroCategoria("");
-            setFiltroCliente("");
-          }}
-        >
-          Reset Filtri
-        </Button>
-      </HStack>
-
-      {/* Tabella segnalazioni */}
-      <Box bg="white" p={6} borderRadius="lg" shadow="md">
-        <Table>
-          <Thead>
-            <Tr>
-              <Th>Data</Th>
-              <Th>Ora</Th>
-              <Th>Categoria</Th>
-              <Th>Sala</Th>
-              <Th>Descrizione</Th>
-            </Tr>
-          </Thead>
-          <Tbody>
-            {segnalazioniFiltrate.map((s) => (
-              <Tr key={s.id}>
-                <Td>{new Date(s.data).toLocaleDateString("it-IT")}</Td>
-                <Td>{s.ora}</Td>
-                <Td>{s.categoria}</Td>
-                <Td>{s.sala}</Td>
-                <Td>{s.descrizione}</Td>
-              </Tr>
-            ))}
-          </Tbody>
-        </Table>
-      </Box>
-
-      {/* Bottoni Export */}
-      <HStack spacing={6} justify="center" mt={4}>
-        <Button colorScheme="green" onClick={esportaCSV}>
-          ⬇️ Esporta CSV
-        </Button>
-        <Button colorScheme="blue" onClick={esportaPDF}>
-          ⬇️ Esporta PDF
-        </Button>
-      </HStack>
-
-      {/* Navigazione alle gestioni */}
-      <HStack spacing={4} justify="center" mt={6}>
-        <Button colorScheme="blue" onClick={() => nav("/utenti")}>
-          👥 Gestione Utenti
-        </Button>
-        <Button colorScheme="purple" onClick={() => nav("/categorie")}>
-          🗂️ Gestione Categorie
-        </Button>
-        <Button colorScheme="teal" onClick={() => nav("/clienti")}>
-          🏢 Gestione Clienti
-        </Button>
       </HStack>
     </Flex>
   );
