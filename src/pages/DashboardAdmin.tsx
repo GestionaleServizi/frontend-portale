@@ -153,7 +153,7 @@ export default function DashboardAdmin() {
     <Flex minH="100vh" bg="gray.50" direction="column" p={8}>
       {/* Logo e titolo */}
       <Flex direction="column" align="center" mb={6}>
-        <Image src="/logo.png" alt="Logo" boxSize="80px" mb={2} />
+        <Image src="/servizinet_logo.png" alt="Logo" boxSize="80px" mb={2} />
         <Heading>📊 Dashboard Amministratore</Heading>
       </Flex>
 
