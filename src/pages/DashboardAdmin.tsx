@@ -14,7 +14,6 @@ import {
   Td,
   Button,
   HStack,
-  VStack,
   Input,
   Select,
   useToast,
@@ -111,37 +110,12 @@ export default function DashboardAdmin() {
 
   return (
     <Flex minH="100vh" bg="gray.50" direction="column" p={6}>
-      {/* Fascia superiore */}
+      {/* Header con titolo, logo e pulsanti */}
       <Flex align="center" justify="space-between" mb={6}>
-        {/* Titolo e KPI */}
-        <VStack align="flex-start" spacing={4}>
-          <Heading size="lg">📊 Dashboard Amministratore</Heading>
-          <VStack spacing={4} align="stretch">
-            <Box p={4} bg="white" borderRadius="md" shadow="sm">
-              <Text fontSize="sm">📊 Segnalazioni</Text>
-              <Heading size="md">{segnalazioniFiltrate.length}</Heading>
-            </Box>
-            <Box p={4} bg="white" borderRadius="md" shadow="sm">
-              <Text fontSize="sm">🏢 Clienti</Text>
-              <Heading size="md">{clienti.length}</Heading>
-            </Box>
-            <Box p={4} bg="white" borderRadius="md" shadow="sm">
-              <Text fontSize="sm">🗂️ Categorie</Text>
-              <Heading size="md">{categorie.length}</Heading>
-            </Box>
-            <Box p={4} bg="white" borderRadius="md" shadow="sm">
-              <Text fontSize="sm">👥 Utenti</Text>
-              <Heading size="md">{utenti.length}</Heading>
-            </Box>
-          </VStack>
-        </VStack>
+        <Heading size="lg">📊 Dashboard Amministratore</Heading>
 
-        {/* Logo al centro */}
-        <Box>
-          <Image src="/servizinet_logo.png" alt="Logo" boxSize="160px" mx="auto" />
-        </Box>
+        <Image src="/servizinet_logo.png" alt="Logo" boxSize="160px" />
 
-        {/* Pulsanti gestione */}
         <HStack spacing={3}>
           <Button colorScheme="blue" leftIcon={<FiUsers />} onClick={() => nav("/utenti")}>
             Utenti
@@ -160,6 +134,26 @@ export default function DashboardAdmin() {
           </Button>
         </HStack>
       </Flex>
+
+      {/* KPI in orizzontale */}
+      <HStack spacing={6} mb={6}>
+        <Box p={6} bg="white" borderRadius="md" shadow="sm" flex="1">
+          <Text fontSize="sm">📊 Segnalazioni</Text>
+          <Heading size="lg">{segnalazioniFiltrate.length}</Heading>
+        </Box>
+        <Box p={6} bg="white" borderRadius="md" shadow="sm" flex="1">
+          <Text fontSize="sm">🏢 Clienti</Text>
+          <Heading size="lg">{clienti.length}</Heading>
+        </Box>
+        <Box p={6} bg="white" borderRadius="md" shadow="sm" flex="1">
+          <Text fontSize="sm">🗂️ Categorie</Text>
+          <Heading size="lg">{categorie.length}</Heading>
+        </Box>
+        <Box p={6} bg="white" borderRadius="md" shadow="sm" flex="1">
+          <Text fontSize="sm">👥 Utenti</Text>
+          <Heading size="lg">{utenti.length}</Heading>
+        </Box>
+      </HStack>
 
       {/* Filtri */}
       <HStack mb={4} spacing={4}>
@@ -190,11 +184,13 @@ export default function DashboardAdmin() {
             </option>
           ))}
         </Select>
-        <Button onClick={() => {
-          setFiltroData("");
-          setFiltroCategoria("");
-          setFiltroCliente("");
-        }}>
+        <Button
+          onClick={() => {
+            setFiltroData("");
+            setFiltroCategoria("");
+            setFiltroCliente("");
+          }}
+        >
           Reset Filtri
         </Button>
       </HStack>
@@ -227,3 +223,4 @@ export default function DashboardAdmin() {
     </Flex>
   );
 }
+
