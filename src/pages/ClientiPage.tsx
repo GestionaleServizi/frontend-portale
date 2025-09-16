@@ -129,7 +129,7 @@ export default function ClientiPage() {
 
       {/* Logo al centro */}
       <Flex justify="center" mb={6}>
-        <Image src="/logo.png" alt="Logo" boxSize="160px" objectFit="contain" />
+        <Image src="/servizinet_logo.png" alt="Logo" boxSize="240px" objectFit="contain" />
       </Flex>
 
       {/* Tabella */}
