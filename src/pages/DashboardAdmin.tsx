@@ -17,9 +17,11 @@ import {
   Select,
   Input,
   useToast,
+  Image,
+  Spacer,
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
-import { FiUsers, FiFolder, FiBriefcase, FiFileText, FiLogOut } from "react-icons/fi";
+import { FiUsers, FiFolder, FiBriefcase, FiLogOut, FiFileText } from "react-icons/fi";
 
 type Segnalazione = {
   id: number;
@@ -34,7 +36,7 @@ type Categoria = { id: number; nome_categoria: string };
 type Cliente = { id: number; nome_sala: string };
 
 export default function DashboardAdmin() {
-  const { token, logout } = useAuth();
+  const { token } = useAuth();
   const [segnalazioni, setSegnalazioni] = useState<Segnalazione[]>([]);
   const [categorie, setCategorie] = useState<Categoria[]>([]);
   const [clienti, setClienti] = useState<Cliente[]>([]);
@@ -45,7 +47,7 @@ export default function DashboardAdmin() {
   const toast = useToast();
   const nav = useNavigate();
 
-  // Carica dati
+  // 📌 Carica dati
   const loadData = async () => {
     try {
       const [segRes, catRes, cliRes, uteRes] = await Promise.all([
@@ -76,7 +78,7 @@ export default function DashboardAdmin() {
     loadData();
   }, []);
 
-  // Filtro segnalazioni
+  // 📌 Filtra segnalazioni
   const segnalazioniFiltrate = segnalazioni.filter((s) => {
     const dataMatch = filtroData ? s.data.startsWith(filtroData) : true;
     const catMatch = filtroCategoria ? s.categoria === filtroCategoria : true;
@@ -84,7 +86,13 @@ export default function DashboardAdmin() {
     return dataMatch && catMatch && cliMatch;
   });
 
-  // Esporta CSV
+  // 📌 KPI dinamici
+  const kpiSegnalazioni = segnalazioniFiltrate.length;
+  const kpiClienti = filtroCliente ? 1 : clienti.length;
+  const kpiCategorie = filtroCategoria ? 1 : categorie.length;
+  const kpiUtenti = utenti.length;
+
+  // 📌 Esporta CSV
   const esportaCSV = () => {
     const header = ["ID", "Data", "Ora", "Categoria", "Sala", "Descrizione"];
     const rows = segnalazioniFiltrate.map((s) => [
@@ -107,7 +115,7 @@ export default function DashboardAdmin() {
     document.body.removeChild(link);
   };
 
-  // Esporta PDF
+  // 📌 Esporta PDF
   const esportaPDF = () => {
     const printContent = `
       <h2>Segnalazioni</h2>
@@ -143,27 +151,34 @@ export default function DashboardAdmin() {
 
   return (
     <Flex minH="100vh" bg="gray.50" direction="column" p={8}>
-      {/* Header con logo e pulsanti */}
-      <Flex
-        align="center"
-        justify="space-between"
-        bg="white"
-        p={4}
-        borderRadius="lg"
-        shadow="md"
-        mb={6}
-      >
-        {/* Logo */}
-        <Box flex="1" textAlign="center">
-          <img
-            src="/servizinet_logo.png"
-            alt="Logo"
-            style={{ height: "60px", margin: "0 auto" }}
-          />
-        </Box>
+      {/* Logo e titolo */}
+      <Flex direction="column" align="center" mb={6}>
+        <Image src="/logo.png" alt="Logo" boxSize="80px" mb={2} />
+        <Heading>📊 Dashboard Amministratore</Heading>
+      </Flex>
 
-        {/* Pulsanti gestione */}
-        <HStack spacing={4}>
+      {/* KPI + Pulsanti */}
+      <Flex align="center" mb={6}>
+        <HStack spacing={6}>
+          <Box p={4} bg="white" borderRadius="lg" shadow="md" textAlign="center">
+            <Text fontSize="sm">📊 Segnalazioni Totali</Text>
+            <Heading size="lg">{kpiSegnalazioni}</Heading>
+          </Box>
+          <Box p={4} bg="white" borderRadius="lg" shadow="md" textAlign="center">
+            <Text fontSize="sm">🏢 Clienti</Text>
+            <Heading size="lg">{kpiClienti}</Heading>
+          </Box>
+          <Box p={4} bg="white" borderRadius="lg" shadow="md" textAlign="center">
+            <Text fontSize="sm">🗂️ Categorie</Text>
+            <Heading size="lg">{kpiCategorie}</Heading>
+          </Box>
+          <Box p={4} bg="white" borderRadius="lg" shadow="md" textAlign="center">
+            <Text fontSize="sm">👥 Utenti</Text>
+            <Heading size="lg">{kpiUtenti}</Heading>
+          </Box>
+        </HStack>
+        <Spacer />
+        <HStack spacing={3}>
           <Button colorScheme="blue" leftIcon={<FiUsers />} onClick={() => nav("/utenti")}>
             Gestione Utenti
           </Button>
@@ -176,36 +191,14 @@ export default function DashboardAdmin() {
           <Button colorScheme="green" leftIcon={<FiFileText />} onClick={esportaCSV}>
             Export CSV
           </Button>
-          <Button colorScheme="blue" leftIcon={<FiFileText />} onClick={esportaPDF}>
+          <Button colorScheme="orange" leftIcon={<FiFileText />} onClick={esportaPDF}>
             Export PDF
           </Button>
-          <Button colorScheme="red" leftIcon={<FiLogOut />} onClick={logout}>
+          <Button colorScheme="red" leftIcon={<FiLogOut />} onClick={() => nav("/login")}>
             Logout
           </Button>
         </HStack>
       </Flex>
-
-      <Heading mb={6}>📊 Dashboard Amministratore</Heading>
-
-      {/* KPI */}
-      <HStack spacing={6} mb={6}>
-        <Box p={6} bg="white" borderRadius="lg" shadow="md" textAlign="center">
-          <Text fontSize="sm">📊 Segnalazioni Totali</Text>
-          <Heading size="lg">{segnalazioni.length}</Heading>
-        </Box>
-        <Box p={6} bg="white" borderRadius="lg" shadow="md" textAlign="center">
-          <Text fontSize="sm">🏢 Clienti</Text>
-          <Heading size="lg">{clienti.length}</Heading>
-        </Box>
-        <Box p={6} bg="white" borderRadius="lg" shadow="md" textAlign="center">
-          <Text fontSize="sm">🗂️ Categorie</Text>
-          <Heading size="lg">{categorie.length}</Heading>
-        </Box>
-        <Box p={6} bg="white" borderRadius="lg" shadow="md" textAlign="center">
-          <Text fontSize="sm">👥 Utenti</Text>
-          <Heading size="lg">{utenti.length}</Heading>
-        </Box>
-      </HStack>
 
       {/* Filtri */}
       <HStack mb={4} spacing={4}>
