@@ -32,7 +32,6 @@ import { AddIcon, EditIcon, DeleteIcon } from "@chakra-ui/icons";
 type Cliente = {
   id: number;
   nome_sala: string;
-  codice_sala: string;
   email?: string;
   referente?: string;
   telefono?: string;
@@ -163,7 +162,6 @@ export default function ClientiPage() {
         <Thead>
           <Tr>
             <Th>Nome Sala</Th>
-            <Th>Codice</Th>
             <Th>Email</Th>
             <Th>Referente</Th>
             <Th>Telefono</Th>
@@ -176,7 +174,6 @@ export default function ClientiPage() {
           {clienti.map((c) => (
             <Tr key={c.id}>
               <Td>{c.nome_sala}</Td>
-              <Td>{c.codice_sala}</Td>
               <Td>{c.email || "-"}</Td>
               <Td>{c.referente || "-"}</Td>
               <Td>{c.telefono || "-"}</Td>
@@ -216,13 +213,6 @@ export default function ClientiPage() {
               <Input
                 value={formData.nome_sala || ""}
                 onChange={(e) => setFormData({ ...formData, nome_sala: e.target.value })}
-              />
-            </FormControl>
-            <FormControl mb={3}>
-              <FormLabel>Codice Sala</FormLabel>
-              <Input
-                value={formData.codice_sala || ""}
-                onChange={(e) => setFormData({ ...formData, codice_sala: e.target.value })}
               />
             </FormControl>
             <FormControl mb={3}>
