@@ -42,7 +42,7 @@ export default function Login() {
   return (
     <Box minH="100vh" display="flex" justifyContent="center" alignItems="center" bg="gray.50">
       <VStack spacing={6} p={10} bg="white" shadow="xl" borderRadius="lg" w="400px">
-        <Image src={logo} alt="Logo" boxSize="120px" />
+        <Image src={logo} alt="Logo" boxSize="160px" />
         <Heading size="lg">Accedi al Portale</Heading>
 
         <FormControl>
