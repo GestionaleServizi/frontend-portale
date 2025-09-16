@@ -14,14 +14,20 @@ import {
   Td,
   Button,
   HStack,
+  VStack,
   Select,
   Input,
   useToast,
   Image,
-  VStack,
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
-import { FiUsers, FiFolder, FiBriefcase, FiLogOut, FiFileText } from "react-icons/fi";
+import {
+  FiUsers,
+  FiFolder,
+  FiBriefcase,
+  FiLogOut,
+  FiFileText,
+} from "react-icons/fi";
 
 type Segnalazione = {
   id: number;
@@ -36,7 +42,7 @@ type Categoria = { id: number; nome_categoria: string };
 type Cliente = { id: number; nome_sala: string };
 
 export default function DashboardAdmin() {
-  const { token, logout } = useAuth();
+  const { token } = useAuth();
   const [segnalazioni, setSegnalazioni] = useState<Segnalazione[]>([]);
   const [categorie, setCategorie] = useState<Categoria[]>([]);
   const [clienti, setClienti] = useState<Cliente[]>([]);
@@ -47,7 +53,6 @@ export default function DashboardAdmin() {
   const toast = useToast();
   const nav = useNavigate();
 
-  // Carica dati
   const loadData = async () => {
     try {
       const [segRes, catRes, cliRes, uteRes] = await Promise.all([
@@ -78,7 +83,6 @@ export default function DashboardAdmin() {
     loadData();
   }, []);
 
-  // Filtro segnalazioni
   const segnalazioniFiltrate = segnalazioni.filter((s) => {
     const dataMatch = filtroData ? s.data.startsWith(filtroData) : true;
     const catMatch = filtroCategoria ? s.categoria === filtroCategoria : true;
@@ -86,17 +90,22 @@ export default function DashboardAdmin() {
     return dataMatch && catMatch && cliMatch;
   });
 
-  // KPI dinamici
-  const kpiSegnalazioni = segnalazioniFiltrate.length;
-  const kpiCategorie = filtroCategoria ? 1 : categorie.length;
-  const kpiClienti = filtroCliente ? 1 : clienti.length;
-  const kpiUtenti = utenti.length;
-
   return (
     <Flex minH="100vh" bg="gray.50" direction="column" p={6}>
       {/* Header */}
-      <Flex justify="space-between" align="center" mb={4}>
+      <Flex justify="space-between" align="flex-start" mb={6}>
+        {/* Titolo a sinistra */}
         <Heading size="lg">📊 Dashboard Amministratore</Heading>
+
+        {/* Logo al centro */}
+        <Image
+          src="/servizinet_logo.png" // <-- sostituisci con il percorso corretto del tuo logo
+          alt="Logo"
+          boxSize="100px"
+          mx="auto"
+        />
+
+        {/* Pulsanti a destra */}
         <HStack spacing={3}>
           <Button leftIcon={<FiUsers />} colorScheme="blue" onClick={() => nav("/utenti")}>
             Utenti
@@ -104,93 +113,107 @@ export default function DashboardAdmin() {
           <Button leftIcon={<FiFolder />} colorScheme="purple" onClick={() => nav("/categorie")}>
             Categorie
           </Button>
-          <Button leftIcon={<FiBriefcase />} colorScheme="teal" onClick={() => nav("/clienti")}>
+          <Button leftIcon={<FiBriefcase />} colorScheme="green" onClick={() => nav("/clienti")}>
             Clienti
           </Button>
-          <Button leftIcon={<FiFileText />} colorScheme="green">
+          <Button leftIcon={<FiFileText />} colorScheme="teal">
             CSV
           </Button>
-          <Button leftIcon={<FiFileText />} colorScheme="blue">
+          <Button leftIcon={<FiFileText />} colorScheme="teal">
             PDF
           </Button>
-          <Button leftIcon={<FiLogOut />} colorScheme="red" onClick={logout}>
+          <Button leftIcon={<FiLogOut />} colorScheme="red" onClick={() => nav("/login")}>
             Logout
           </Button>
         </HStack>
       </Flex>
 
-      {/* Logo al centro */}
-      <Flex justify="center" mb={6}>
-        <Image src="/servizinet_logo.png" alt="Logo" boxSize="360px" objectFit="contain" />
-      </Flex>
+      {/* KPI in colonna a sinistra */}
+      <Flex>
+        <VStack align="stretch" spacing={4} w="200px" mr={6}>
+          <Box p={4} bg="white" shadow="md" borderRadius="md">
+            <Text fontSize="sm">📊 Segnalazioni</Text>
+            <Heading size="lg">{segnalazioniFiltrate.length}</Heading>
+          </Box>
+          <Box p={4} bg="white" shadow="md" borderRadius="md">
+            <Text fontSize="sm">🏢 Clienti</Text>
+            <Heading size="lg">{clienti.length}</Heading>
+          </Box>
+          <Box p={4} bg="white" shadow="md" borderRadius="md">
+            <Text fontSize="sm">🗂️ Categorie</Text>
+            <Heading size="lg">{categorie.length}</Heading>
+          </Box>
+          <Box p={4} bg="white" shadow="md" borderRadius="md">
+            <Text fontSize="sm">👥 Utenti</Text>
+            <Heading size="lg">{utenti.length}</Heading>
+          </Box>
+        </VStack>
 
-      {/* KPI in card sotto al logo */}
-      <HStack spacing={6} mb={6}>
-        <Box flex="1" p={6} bg="white" borderRadius="lg" shadow="md" textAlign="center">
-          <Text fontSize="sm" color="gray.500">📊 Segnalazioni</Text>
-          <Heading size="lg">{kpiSegnalazioni}</Heading>
-        </Box>
-        <Box flex="1" p={6} bg="white" borderRadius="lg" shadow="md" textAlign="center">
-          <Text fontSize="sm" color="gray.500">🏢 Clienti</Text>
-          <Heading size="lg">{kpiClienti}</Heading>
-        </Box>
-        <Box flex="1" p={6} bg="white" borderRadius="lg" shadow="md" textAlign="center">
-          <Text fontSize="sm" color="gray.500">🗂️ Categorie</Text>
-          <Heading size="lg">{kpiCategorie}</Heading>
-        </Box>
-        <Box flex="1" p={6} bg="white" borderRadius="lg" shadow="md" textAlign="center">
-          <Text fontSize="sm" color="gray.500">👥 Utenti</Text>
-          <Heading size="lg">{kpiUtenti}</Heading>
-        </Box>
-      </HStack>
+        {/* Tabella principale */}
+        <Box flex="1" bg="white" p={6} borderRadius="lg" shadow="md">
+          <HStack mb={4} spacing={4}>
+            <Input
+              type="date"
+              value={filtroData}
+              onChange={(e) => setFiltroData(e.target.value)}
+            />
+            <Select
+              placeholder="Tutte le categorie"
+              value={filtroCategoria}
+              onChange={(e) => setFiltroCategoria(e.target.value)}
+            >
+              {categorie.map((c) => (
+                <option key={c.id} value={c.nome_categoria}>
+                  {c.nome_categoria}
+                </option>
+              ))}
+            </Select>
+            <Select
+              placeholder="Tutti i clienti"
+              value={filtroCliente}
+              onChange={(e) => setFiltroCliente(e.target.value)}
+            >
+              {clienti.map((c) => (
+                <option key={c.id} value={c.nome_sala}>
+                  {c.nome_sala}
+                </option>
+              ))}
+            </Select>
+            <Button
+              onClick={() => {
+                setFiltroData("");
+                setFiltroCategoria("");
+                setFiltroCliente("");
+              }}
+            >
+              Reset Filtri
+            </Button>
+          </HStack>
 
-      {/* Filtri */}
-      <HStack mb={4} spacing={4}>
-        <Input type="date" value={filtroData} onChange={(e) => setFiltroData(e.target.value)} />
-        <Select placeholder="Tutte le categorie" value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)}>
-          {categorie.map((c) => (
-            <option key={c.id} value={c.nome_categoria}>
-              {c.nome_categoria}
-            </option>
-          ))}
-        </Select>
-        <Select placeholder="Tutti i clienti" value={filtroCliente} onChange={(e) => setFiltroCliente(e.target.value)}>
-          {clienti.map((c) => (
-            <option key={c.id} value={c.nome_sala}>
-              {c.nome_sala}
-            </option>
-          ))}
-        </Select>
-        <Button onClick={() => { setFiltroData(""); setFiltroCategoria(""); setFiltroCliente(""); }}>
-          Reset Filtri
-        </Button>
-      </HStack>
-
-      {/* Tabella segnalazioni */}
-      <Box bg="white" p={6} borderRadius="lg" shadow="md">
-        <Table>
-          <Thead>
-            <Tr>
-              <Th>Data</Th>
-              <Th>Ora</Th>
-              <Th>Categoria</Th>
-              <Th>Sala</Th>
-              <Th>Descrizione</Th>
-            </Tr>
-          </Thead>
-          <Tbody>
-            {segnalazioniFiltrate.map((s) => (
-              <Tr key={s.id}>
-                <Td>{new Date(s.data).toLocaleDateString("it-IT")}</Td>
-                <Td>{s.ora}</Td>
-                <Td>{s.categoria}</Td>
-                <Td>{s.sala}</Td>
-                <Td>{s.descrizione}</Td>
+          <Table>
+            <Thead>
+              <Tr>
+                <Th>Data</Th>
+                <Th>Ora</Th>
+                <Th>Categoria</Th>
+                <Th>Sala</Th>
+                <Th>Descrizione</Th>
               </Tr>
-            ))}
-          </Tbody>
-        </Table>
-      </Box>
+            </Thead>
+            <Tbody>
+              {segnalazioniFiltrate.map((s) => (
+                <Tr key={s.id}>
+                  <Td>{new Date(s.data).toLocaleDateString("it-IT")}</Td>
+                  <Td>{s.ora}</Td>
+                  <Td>{s.categoria}</Td>
+                  <Td>{s.sala}</Td>
+                  <Td>{s.descrizione}</Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+        </Box>
+      </Flex>
     </Flex>
   );
 }
