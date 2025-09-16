@@ -108,7 +108,7 @@ export default function ClientiPage() {
       {/* Header con titolo, logo e pulsanti */}
       <Flex justify="space-between" align="center" mb={6}>
         <Heading size="lg">🏢 Gestione Clienti</Heading>
-        <Image src="/servizinet_logo.png" alt="Logo" boxSize="80px" objectFit="contain" />
+        <Image src="/servizinet_logo.png" alt="Logo" boxSize="160px" objectFit="contain" />
         <HStack spacing={4}>
           <Button colorScheme="blue" onClick={() => navigate("/dashboard")}>
             📊 Dashboard
