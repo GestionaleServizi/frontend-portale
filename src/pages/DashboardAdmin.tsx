@@ -208,7 +208,6 @@ export default function DashboardAdmin() {
         <Table>
           <Thead>
             <Tr>
-              <Th>ID</Th>
               <Th>Data</Th>
               <Th>Ora</Th>
               <Th>Categoria</Th>
@@ -219,7 +218,6 @@ export default function DashboardAdmin() {
           <Tbody>
             {segnalazioniFiltrate.map((s) => (
               <Tr key={s.id}>
-                <Td>{s.id}</Td>
                 <Td>{new Date(s.data).toLocaleDateString("it-IT")}</Td>
                 <Td>{s.ora}</Td>
                 <Td>{s.categoria}</Td>
