@@ -32,7 +32,7 @@ import { AddIcon, EditIcon, DeleteIcon } from "@chakra-ui/icons";
 type Utente = {
   id: number;
   email: string;
-  ruolo: "operatore" | "admin";
+  ruolo: "admin" | "operatore";
   cliente_id?: number | null;
   created_at?: string;
 };
@@ -243,8 +243,8 @@ export default function UtentiPage() {
                   })
                 }
               >
-                <option value="admin">Admin</option>
-                <option value="operatore">Operatore</option>
+              <option value="operatore">Operatore</option>
+              <option value="admin">Admin</option>
               </Select>
             </FormControl>
             <FormControl mb={3}>
