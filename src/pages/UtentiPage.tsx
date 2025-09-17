@@ -32,7 +32,7 @@ import { AddIcon, EditIcon, DeleteIcon } from "@chakra-ui/icons";
 type Utente = {
   id: number;
   email: string;
-  ruolo: "admin" | "operatore";
+  ruolo: "operatore" | "admin";
   cliente_id?: number | null;
   created_at?: string;
 };
