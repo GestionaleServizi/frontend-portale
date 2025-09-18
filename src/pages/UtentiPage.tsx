@@ -18,7 +18,7 @@ import {
   HStack,
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
-import logo from "../assets/logo.png";
+import logo from "./servizinet_logo.png";
 
 type Utente = { id: number; email: string; ruolo: string; cliente_id: number | null };
 type Cliente = { id: number; nome_sala: string };
