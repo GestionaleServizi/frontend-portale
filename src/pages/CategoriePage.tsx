@@ -25,8 +25,10 @@ import {
   FormLabel,
   Input,
   useDisclosure,
+  Image,
 } from "@chakra-ui/react";
 import { AddIcon, EditIcon, DeleteIcon } from "@chakra-ui/icons";
+import { useNavigate } from "react-router-dom";
 
 type Categoria = {
   id: number;
@@ -34,13 +36,13 @@ type Categoria = {
 };
 
 export default function CategoriePage() {
-  const { token } = useAuth();
+  const { token, logout } = useAuth();
   const [categorie, setCategorie] = useState<Categoria[]>([]);
   const [selected, setSelected] = useState<Categoria | null>(null);
   const [nome, setNome] = useState("");
   const toast = useToast();
-
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const navigate = useNavigate();
 
   const loadCategorie = async () => {
     try {
@@ -116,8 +118,26 @@ export default function CategoriePage() {
 
   return (
     <Flex minH="100vh" bg="gray.50" direction="column" p={8}>
-      <Heading mb={6}>🗂️ Gestione Categorie</Heading>
+      {/* Header come ClientiPage */}
+      <Flex justify="space-between" align="center" mb={6}>
+        <Heading size="lg">🗂️ Gestione Categorie</Heading>
+        <Image
+          src="/servizinet_logo.png"
+          alt="Logo"
+          boxSize="160px"
+          objectFit="contain"
+        />
+        <HStack spacing={4}>
+          <Button colorScheme="blue" onClick={() => navigate("/dashboard")}>
+            📊 Dashboard
+          </Button>
+          <Button colorScheme="red" onClick={logout}>
+            🚪 Logout
+          </Button>
+        </HStack>
+      </Flex>
 
+      {/* Tabella categorie */}
       <Box bg="white" p={6} borderRadius="lg" shadow="md">
         <HStack justify="flex-end" mb={4}>
           <Button
@@ -176,10 +196,7 @@ export default function CategoriePage() {
           <ModalBody>
             <FormControl mb={3}>
               <FormLabel>Nome Categoria</FormLabel>
-              <Input
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
-              />
+              <Input value={nome} onChange={(e) => setNome(e.target.value)} />
             </FormControl>
           </ModalBody>
           <ModalFooter>
