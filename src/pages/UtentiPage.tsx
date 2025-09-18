@@ -186,7 +186,6 @@ export default function UtentiPage() {
           <Tbody>
             {utenti.map((u) => (
               <Tr key={u.id}>
-                <Td>{u.id}</Td>
                 <Td>{u.email}</Td>
                 <Td>{u.ruolo}</Td>
                 <Td>
