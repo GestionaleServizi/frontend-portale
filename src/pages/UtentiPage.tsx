@@ -139,9 +139,36 @@ export default function UtentiPage() {
   };
 
   return (
-    <Flex minH="100vh" bg="gray.50" direction="column" p={8}>
-      <Heading mb={6}>👥 Gestione Utenti</Heading>
+  <Flex minH="100vh" bg="gray.50" direction="column" p={8}>
+  {/* Header con logo e pulsanti */}
+  <Box
+    display="flex"
+    alignItems="center"
+    justifyContent="space-between"
+    w="100%"
+    mb={6}
+  >
+    {/* Logo centrato */}
+    <Box flex="1" textAlign="center">
+      <Image src="/assets/logo.png" alt="Logo" height="50px" mx="auto" />
+    </Box>
 
+    {/* Pulsanti a destra */}
+    <HStack spacing={4} position="absolute" right="20px" top="20px">
+      <Button colorScheme="blue" onClick={() => navigate("/dashboard")}>
+        Dashboard
+      </Button>
+      <Button colorScheme="red" onClick={handleLogout}>
+        Logout
+      </Button>
+    </HStack>
+  </Box>
+
+  {/* Titolo con icona accanto */}
+  <HStack mb={6} spacing={3}>
+    <Image src="/assets/icon-utenti.png" alt="Icona Utenti" boxSize="30px" />
+    <Heading>Gestione Utenti</Heading>
+  </HStack>
       <Box bg="white" p={6} borderRadius="lg" shadow="md">
         <HStack justify="flex-end" mb={4}>
           <Button
