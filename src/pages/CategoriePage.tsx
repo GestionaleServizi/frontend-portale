@@ -152,7 +152,6 @@ export default function CategoriePage() {
         <Table>
           <Thead>
             <Tr>
-              <Th>ID</Th>
               <Th>Nome Categoria</Th>
               <Th>Azioni</Th>
             </Tr>
