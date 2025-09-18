@@ -176,7 +176,6 @@ export default function UtentiPage() {
         <Table>
           <Thead>
             <Tr>
-              <Th>ID</Th>
               <Th>Email</Th>
               <Th>Ruolo</Th>
               <Th>Cliente</Th>
