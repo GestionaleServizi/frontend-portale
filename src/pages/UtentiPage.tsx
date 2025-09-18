@@ -26,8 +26,10 @@ import {
   Input,
   Select,
   useDisclosure,
+  Image,
 } from "@chakra-ui/react";
 import { AddIcon, EditIcon, DeleteIcon } from "@chakra-ui/icons";
+import { useNavigate } from "react-router-dom";
 
 type Utente = {
   id: number;
@@ -43,14 +45,14 @@ type Cliente = {
 };
 
 export default function UtentiPage() {
-  const { token } = useAuth();
+  const { token, logout } = useAuth();
   const [utenti, setUtenti] = useState<Utente[]>([]);
   const [clienti, setClienti] = useState<Cliente[]>([]);
   const [selected, setSelected] = useState<Utente | null>(null);
   const [formData, setFormData] = useState<Partial<Utente> & { password?: string }>({});
   const toast = useToast();
-
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const navigate = useNavigate();
 
   // Carica utenti e clienti
   const loadUtenti = async () => {
@@ -139,36 +141,27 @@ export default function UtentiPage() {
   };
 
   return (
-  <Flex minH="100vh" bg="gray.50" direction="column" p={8}>
-  {/* Header con logo e pulsanti */}
-  <Box
-    display="flex"
-    alignItems="center"
-    justifyContent="space-between"
-    w="100%"
-    mb={6}
-  >
-    {/* Logo centrato */}
-    <Box flex="1" textAlign="center">
-      <Image src="/assets/logo.png" alt="Logo" height="50px" mx="auto" />
-    </Box>
+    <Flex minH="100vh" bg="gray.50" direction="column" p={8}>
+      {/* Header come ClientiPage */}
+      <Flex justify="space-between" align="center" mb={6}>
+        <Heading size="lg">👥 Gestione Utenti</Heading>
+        <Image
+          src="/servizinet_logo.png"
+          alt="Logo"
+          boxSize="160px"
+          objectFit="contain"
+        />
+        <HStack spacing={4}>
+          <Button colorScheme="blue" onClick={() => navigate("/dashboard")}>
+            📊 Dashboard
+          </Button>
+          <Button colorScheme="red" onClick={logout}>
+            🚪 Logout
+          </Button>
+        </HStack>
+      </Flex>
 
-    {/* Pulsanti a destra */}
-    <HStack spacing={4} position="absolute" right="20px" top="20px">
-      <Button colorScheme="blue" onClick={() => navigate("/dashboard")}>
-        Dashboard
-      </Button>
-      <Button colorScheme="red" onClick={handleLogout}>
-        Logout
-      </Button>
-    </HStack>
-  </Box>
-
-  {/* Titolo con icona accanto */}
-  <HStack mb={6} spacing={3}>
-    <Image src="/assets/icon-utenti.png" alt="Icona Utenti" boxSize="30px" />
-    <Heading>Gestione Utenti</Heading>
-  </HStack>
+      {/* Box tabella */}
       <Box bg="white" p={6} borderRadius="lg" shadow="md">
         <HStack justify="flex-end" mb={4}>
           <Button
@@ -270,8 +263,8 @@ export default function UtentiPage() {
                   })
                 }
               >
-              <option value="operatore">Operatore</option>
-              <option value="admin">Admin</option>
+                <option value="operatore">Operatore</option>
+                <option value="admin">Admin</option>
               </Select>
             </FormControl>
             <FormControl mb={3}>
