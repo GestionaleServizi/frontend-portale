@@ -1,40 +1,30 @@
+// src/pages/UtentiPage.tsx
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 import {
   Box,
   Flex,
   Heading,
-  Button,
   Table,
   Thead,
   Tbody,
   Tr,
   Th,
   Td,
-  useToast,
-  HStack,
-  IconButton,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  ModalCloseButton,
-  FormControl,
-  FormLabel,
+  Button,
+  VStack,
   Input,
   Select,
-  useDisclosure,
+  useToast,
+  HStack,
 } from "@chakra-ui/react";
-import { AddIcon, EditIcon, DeleteIcon } from "@chakra-ui/icons";
+import { useNavigate } from "react-router-dom";
 
 type Utente = {
   id: number;
   email: string;
-  ruolo: "admin" | "operatore";
-  cliente_id?: number | null;
-  created_at?: string;
+  ruolo: string;
+  cliente_id?: number;
 };
 
 type Cliente = {
@@ -43,158 +33,175 @@ type Cliente = {
 };
 
 export default function UtentiPage() {
-  const { token } = useAuth();
+  const { token, logout } = useAuth();
   const [utenti, setUtenti] = useState<Utente[]>([]);
   const [clienti, setClienti] = useState<Cliente[]>([]);
-  const [selected, setSelected] = useState<Utente | null>(null);
-  const [formData, setFormData] = useState<Partial<Utente> & { password?: string }>({});
+  const [email, setEmail] = useState("");
+  const [ruolo, setRuolo] = useState("");
+  const [clienteId, setClienteId] = useState("");
+  const [editingId, setEditingId] = useState<number | null>(null);
   const toast = useToast();
+  const nav = useNavigate();
 
-  const { isOpen, onOpen, onClose } = useDisclosure();
-
-  // Carica utenti e clienti
-  const loadUtenti = async () => {
+  const loadData = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/utenti`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      setUtenti(data);
+      const [uteRes, cliRes] = await Promise.all([
+        fetch(`${import.meta.env.VITE_API_BASE_URL}/utenti`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${import.meta.env.VITE_API_BASE_URL}/clienti`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+      setUtenti(await uteRes.json());
+      setClienti(await cliRes.json());
     } catch {
-      toast({ title: "Errore caricamento utenti", status: "error" });
-    }
-  };
-
-  const loadClienti = async () => {
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/clienti`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      setClienti(data);
-    } catch {
-      toast({ title: "Errore caricamento clienti", status: "error" });
+      toast({ title: "Errore caricamento dati", status: "error" });
     }
   };
 
   useEffect(() => {
-    loadUtenti();
-    loadClienti();
+    loadData();
   }, []);
 
-  const handleSave = async () => {
+  const handleSubmit = async () => {
+    if (!email || !ruolo) {
+      toast({ title: "Compila tutti i campi", status: "warning" });
+      return;
+    }
     try {
-      const method = selected ? "PUT" : "POST";
-      const url = selected
-        ? `${import.meta.env.VITE_API_BASE_URL}/utenti/${selected.id}`
-        : `${import.meta.env.VITE_API_BASE_URL}/utenti`;
-
-      const res = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!res.ok) throw new Error("Errore salvataggio");
-
-      toast({
-        title: selected ? "Utente aggiornato" : "Utente creato",
-        status: "success",
-      });
-      onClose();
-      setSelected(null);
-      setFormData({});
-      loadUtenti();
+      if (editingId) {
+        await fetch(`${import.meta.env.VITE_API_BASE_URL}/utenti/${editingId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ email, ruolo, cliente_id: clienteId || null }),
+        });
+        toast({ title: "Utente aggiornato", status: "success" });
+      } else {
+        await fetch(`${import.meta.env.VITE_API_BASE_URL}/utenti`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ email, ruolo, cliente_id: clienteId || null }),
+        });
+        toast({ title: "Utente creato", status: "success" });
+      }
+      setEmail("");
+      setRuolo("");
+      setClienteId("");
+      setEditingId(null);
+      loadData();
     } catch {
-      toast({ title: "Errore salvataggio", status: "error" });
+      toast({ title: "Errore salvataggio utente", status: "error" });
     }
   };
 
+  const handleEdit = (u: Utente) => {
+    setEditingId(u.id);
+    setEmail(u.email);
+    setRuolo(u.ruolo);
+    setClienteId(u.cliente_id ? String(u.cliente_id) : "");
+  };
+
   const handleDelete = async (id: number) => {
-    if (!confirm("Vuoi davvero eliminare questo utente?")) return;
+    if (!confirm("Sei sicuro di voler eliminare questo utente?")) return;
     try {
       await fetch(`${import.meta.env.VITE_API_BASE_URL}/utenti/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
       toast({ title: "Utente eliminato", status: "info" });
-      loadUtenti();
+      loadData();
     } catch {
-      toast({ title: "Errore eliminazione", status: "error" });
+      toast({ title: "Errore eliminazione utente", status: "error" });
     }
-  };
-
-  const openModal = (utente?: Utente) => {
-    if (utente) {
-      setSelected(utente);
-      setFormData(utente);
-    } else {
-      setSelected(null);
-      setFormData({});
-    }
-    onOpen();
   };
 
   return (
     <Flex minH="100vh" bg="gray.50" direction="column" p={8}>
-      <Heading mb={6}>👥 Gestione Utenti</Heading>
-
-      <Box bg="white" p={6} borderRadius="lg" shadow="md">
-        <HStack justify="flex-end" mb={4}>
-          <Button
-            leftIcon={<AddIcon />}
-            colorScheme="blue"
-            onClick={() => openModal()}
-          >
-            Aggiungi Utente
+      {/* Header con logo */}
+      <VStack spacing={2} mb={6}>
+        <img src="/servizinet_logo.png" alt="Logo" width="120" />
+        <Heading size="lg">Gestione Utenti</Heading>
+        <HStack spacing={4}>
+          <Button colorScheme="blue" onClick={() => nav("/dashboard")}>
+            Dashboard
+          </Button>
+          <Button colorScheme="red" onClick={logout}>
+            Logout
           </Button>
         </HStack>
+      </VStack>
 
+      {/* Form Utente */}
+      <Box bg="white" p={6} borderRadius="lg" shadow="md" mb={6}>
+        <VStack spacing={4} align="stretch">
+          <Input
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <Select
+            placeholder="Seleziona ruolo"
+            value={ruolo}
+            onChange={(e) => setRuolo(e.target.value)}
+          >
+            <option value="admin">Admin</option>
+            <option value="operatore">Operatore</option>
+          </Select>
+          <Select
+            placeholder="Assegna cliente (solo per operatori)"
+            value={clienteId}
+            onChange={(e) => setClienteId(e.target.value)}
+          >
+            {clienti.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nome_sala}
+              </option>
+            ))}
+          </Select>
+          <Button colorScheme="blue" onClick={handleSubmit}>
+            {editingId ? "Aggiorna" : "Crea"} Utente
+          </Button>
+        </VStack>
+      </Box>
+
+      {/* Tabella Utenti */}
+      <Box bg="white" p={6} borderRadius="lg" shadow="md">
         <Table>
           <Thead>
             <Tr>
-              <Th>ID</Th>
               <Th>Email</Th>
               <Th>Ruolo</Th>
               <Th>Cliente</Th>
-              <Th>Creato il</Th>
               <Th>Azioni</Th>
             </Tr>
           </Thead>
           <Tbody>
             {utenti.map((u) => (
               <Tr key={u.id}>
-                <Td>{u.id}</Td>
                 <Td>{u.email}</Td>
                 <Td>{u.ruolo}</Td>
                 <Td>
-                  {u.cliente_id
-                    ? clienti.find((c) => c.id === u.cliente_id)?.nome_sala
-                    : "-"}
-                </Td>
-                <Td>
-                  {u.created_at
-                    ? new Date(u.created_at).toLocaleDateString("it-IT")
-                    : "-"}
+                  {clienti.find((c) => c.id === u.cliente_id)?.nome_sala || "-"}
                 </Td>
                 <Td>
                   <HStack>
-                    <IconButton
-                      aria-label="Modifica"
-                      icon={<EditIcon />}
-                      size="sm"
-                      onClick={() => openModal(u)}
-                    />
-                    <IconButton
-                      aria-label="Elimina"
-                      icon={<DeleteIcon />}
+                    <Button size="sm" onClick={() => handleEdit(u)}>
+                      Modifica
+                    </Button>
+                    <Button
                       size="sm"
                       colorScheme="red"
                       onClick={() => handleDelete(u.id)}
-                    />
+                    >
+                      Elimina
+                    </Button>
                   </HStack>
                 </Td>
               </Tr>
@@ -202,81 +209,6 @@ export default function UtentiPage() {
           </Tbody>
         </Table>
       </Box>
-
-      {/* Modale Aggiungi/Modifica Utente */}
-      <Modal isOpen={isOpen} onClose={onClose}>
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>
-            {selected ? "Modifica Utente" : "Nuovo Utente"}
-          </ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <FormControl mb={3}>
-              <FormLabel>Email</FormLabel>
-              <Input
-                type="email"
-                value={formData.email || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
-              />
-            </FormControl>
-            <FormControl mb={3}>
-              <FormLabel>Password {selected && "(lascia vuoto per non cambiare)"}</FormLabel>
-              <Input
-                type="password"
-                value={formData.password || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, password: e.target.value })
-                }
-              />
-            </FormControl>
-            <FormControl mb={3}>
-              <FormLabel>Ruolo</FormLabel>
-              <Select
-                value={formData.ruolo || ""}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    ruolo: e.target.value as "admin" | "operatore",
-                  })
-                }
-              >
-              <option value="operatore">Operatore</option>
-              <option value="admin">Admin</option>
-              </Select>
-            </FormControl>
-            <FormControl mb={3}>
-              <FormLabel>Cliente (solo per Operatore)</FormLabel>
-              <Select
-                placeholder="Nessuno"
-                value={formData.cliente_id || ""}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    cliente_id: e.target.value ? Number(e.target.value) : null,
-                  })
-                }
-              >
-                {clienti.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nome_sala}
-                  </option>
-                ))}
-              </Select>
-            </FormControl>
-          </ModalBody>
-          <ModalFooter>
-            <Button colorScheme="blue" mr={3} onClick={handleSave}>
-              Salva
-            </Button>
-            <Button variant="ghost" onClick={onClose}>
-              Annulla
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
     </Flex>
   );
 }
