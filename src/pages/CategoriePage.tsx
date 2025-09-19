@@ -159,7 +159,6 @@ export default function CategoriePage() {
           <Tbody>
             {categorie.map((c) => (
               <Tr key={c.id}>
-                <Td>{c.id}</Td>
                 <Td>{c.nome_categoria}</Td>
                 <Td>
                   <HStack>
