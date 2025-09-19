@@ -1,130 +1,116 @@
-// src/pages/UtentiPage.tsx
+// src/pages/ClientiPage.tsx
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 import {
   Box,
   Flex,
   Heading,
-  Text,
+  Button,
   Table,
   Thead,
   Tbody,
   Tr,
   Th,
   Td,
-  Button,
-  HStack,
-  Input,
-  Select,
   useToast,
+  HStack,
+  IconButton,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  ModalCloseButton,
+  FormControl,
+  FormLabel,
+  Input,
+  useDisclosure,
   Image,
 } from "@chakra-ui/react";
+import { AddIcon, EditIcon, DeleteIcon } from "@chakra-ui/icons";
 import { useNavigate } from "react-router-dom";
-
-type Utente = {
-  id: number;
-  email: string;
-  ruolo: string;
-  cliente_id?: number;
-};
 
 type Cliente = {
   id: number;
   nome_sala: string;
+  email: string;
+  referente: string;
+  telefono: string;
+  indirizzo: string;
+  orari_apertura: string;
 };
 
-export default function UtentiPage() {
+export default function ClientiPage() {
   const { token, logout } = useAuth();
-  const [utenti, setUtenti] = useState<Utente[]>([]);
   const [clienti, setClienti] = useState<Cliente[]>([]);
-  const [email, setEmail] = useState("");
-  const [ruolo, setRuolo] = useState("operatore");
-  const [clienteId, setClienteId] = useState<number | "">("");
+  const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
+  const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
-  const nav = useNavigate();
+  const navigate = useNavigate();
 
-  // Carica dati
-  const loadData = async () => {
+  const loadClienti = async () => {
     try {
-      const [uteRes, cliRes] = await Promise.all([
-        fetch(`${import.meta.env.VITE_API_BASE_URL}/utenti`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${import.meta.env.VITE_API_BASE_URL}/clienti`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-      ]);
-
-      setUtenti(await uteRes.json());
-      setClienti(await cliRes.json());
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/clienti`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setClienti(await res.json());
     } catch {
-      toast({ title: "Errore caricamento dati", status: "error" });
+      toast({ title: "Errore caricamento clienti", status: "error" });
     }
   };
 
   useEffect(() => {
-    loadData();
+    loadClienti();
   }, []);
 
-  // Aggiungi utente
-  const aggiungiUtente = async () => {
-    if (!email) {
-      toast({ title: "Email obbligatoria", status: "warning" });
-      return;
-    }
-
-    const payload: any = { email, ruolo };
-    if (ruolo === "operatore") {
-      if (!clienteId) {
-        toast({ title: "Seleziona un cliente per l’operatore", status: "warning" });
-        return;
-      }
-      payload.cliente_id = clienteId;
-    }
-
+  const handleSave = async () => {
+    if (!selectedCliente) return;
     try {
-      await fetch(`${import.meta.env.VITE_API_BASE_URL}/utenti`, {
-        method: "POST",
+      const method = selectedCliente.id ? "PUT" : "POST";
+      const url = selectedCliente.id
+        ? `${import.meta.env.VITE_API_BASE_URL}/clienti/${selectedCliente.id}`
+        : `${import.meta.env.VITE_API_BASE_URL}/clienti`;
+
+      await fetch(url, {
+        method,
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(selectedCliente),
       });
 
-      toast({ title: "Utente aggiunto", status: "success" });
-      setEmail("");
-      setRuolo("operatore");
-      setClienteId("");
-      loadData();
+      toast({ title: "Cliente salvato", status: "success" });
+      onClose();
+      loadClienti();
     } catch {
-      toast({ title: "Errore aggiunta utente", status: "error" });
+      toast({ title: "Errore salvataggio cliente", status: "error" });
     }
   };
 
-  // Elimina utente
-  const eliminaUtente = async (id: number) => {
+  const handleDelete = async (id: number) => {
+    if (!confirm("Sei sicuro di voler eliminare questo cliente?")) return;
     try {
-      await fetch(`${import.meta.env.VITE_API_BASE_URL}/utenti/${id}`, {
+      await fetch(`${import.meta.env.VITE_API_BASE_URL}/clienti/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
-      toast({ title: "Utente eliminato", status: "info" });
-      loadData();
+      toast({ title: "Cliente eliminato", status: "info" });
+      loadClienti();
     } catch {
-      toast({ title: "Errore eliminazione utente", status: "error" });
+      toast({ title: "Errore eliminazione cliente", status: "error" });
     }
   };
 
   return (
-    <Flex minH="100vh" bg="gray.50" direction="column" p={8}>
-      {/* Header con logo e bottoni */}
+    <Flex minH="100vh" direction="column" bg="gray.50" p={8}>
+      {/* Header con titolo, logo e pulsanti */}
       <Flex justify="space-between" align="center" mb={6}>
-        <Box flex="1" textAlign="center">
-          <Image src="/servizinet_logo.png" alt="Logo" h="60px" mx="auto" />
-        </Box>
-        <HStack spacing={4} position="absolute" right="40px">
-          <Button colorScheme="blue" onClick={() => nav("/dashboard")}>
+        <Heading size="lg">🏢 Gestione Clienti</Heading>
+        <Image src="/servizinet_logo.png" alt="Logo" boxSize="160px" objectFit="contain" />
+        <HStack spacing={4}>
+          <Button colorScheme="blue" onClick={() => navigate("/dashboard")}>
             📊 Dashboard
           </Button>
           <Button colorScheme="red" onClick={logout}>
@@ -133,72 +119,166 @@ export default function UtentiPage() {
         </HStack>
       </Flex>
 
-      <Heading mb={6}>👥 Gestione Utenti</Heading>
-
-      {/* Form aggiunta */}
-      <HStack mb={4} spacing={4}>
-        <Input
-          placeholder="Email utente"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <Select value={ruolo} onChange={(e) => setRuolo(e.target.value)}>
-          <option value="operatore">Operatore</option>
-          <option value="admin">Admin</option>
-        </Select>
-        {ruolo === "operatore" && (
-          <Select
-            placeholder="Seleziona cliente"
-            value={clienteId}
-            onChange={(e) => setClienteId(Number(e.target.value))}
-          >
-            {clienti.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nome_sala}
-              </option>
-            ))}
-          </Select>
-        )}
-        <Button colorScheme="green" onClick={aggiungiUtente}>
-          ➕ Aggiungi
-        </Button>
-      </HStack>
-
-      {/* Tabella utenti */}
+      {/* Tabella clienti */}
       <Box bg="white" p={6} borderRadius="lg" shadow="md">
+        <Flex justify="space-between" mb={4}>
+          <Heading size="md">Lista Clienti</Heading>
+          <Button
+            colorScheme="green"
+            leftIcon={<AddIcon />}
+            onClick={() => {
+              setSelectedCliente({
+                id: 0,
+                nome_sala: "",
+                email: "",
+                referente: "",
+                telefono: "",
+                indirizzo: "",
+                orari_apertura: "",
+              });
+              onOpen();
+            }}
+          >
+            Aggiungi Cliente
+          </Button>
+        </Flex>
+
         <Table>
           <Thead>
             <Tr>
+              <Th>Nome Sala</Th>
               <Th>Email</Th>
-              <Th>Ruolo</Th>
-              <Th>Cliente</Th>
+              <Th>Referente</Th>
+              <Th>Telefono</Th>
+              <Th>Indirizzo</Th>
+              <Th>Orari Apertura</Th>
               <Th>Azioni</Th>
             </Tr>
           </Thead>
           <Tbody>
-            {utenti.map((u) => (
-              <Tr key={u.id}>
-                <Td>{u.email}</Td>
-                <Td>{u.ruolo}</Td>
+            {clienti.map((c) => (
+              <Tr key={c.id}>
+                <Td>{c.nome_sala}</Td>
+                <Td>{c.email}</Td>
+                <Td>{c.referente}</Td>
+                <Td>{c.telefono}</Td>
+                <Td>{c.indirizzo}</Td>
+                <Td>{c.orari_apertura}</Td>
                 <Td>
-                  {u.cliente_id
-                    ? clienti.find((c) => c.id === u.cliente_id)?.nome_sala || "-"
-                    : "-"}
-                </Td>
-                <Td>
-                  <Button
-                    colorScheme="red"
-                    size="sm"
-                    onClick={() => eliminaUtente(u.id)}
-                  >
-                    ❌ Elimina
-                  </Button>
+                  <HStack spacing={2}>
+                    <IconButton
+                      aria-label="Modifica"
+                      icon={<EditIcon />}
+                      onClick={() => {
+                        setSelectedCliente(c);
+                        onOpen();
+                      }}
+                    />
+                    <IconButton
+                      aria-label="Elimina"
+                      icon={<DeleteIcon />}
+                      colorScheme="red"
+                      onClick={() => handleDelete(c.id)}
+                    />
+                  </HStack>
                 </Td>
               </Tr>
             ))}
           </Tbody>
         </Table>
       </Box>
+
+      {/* Modal per inserimento/modifica */}
+      <Modal isOpen={isOpen} onClose={onClose}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>
+            {selectedCliente?.id ? "Modifica Cliente" : "Nuovo Cliente"}
+          </ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <FormControl mb={3}>
+              <FormLabel>Nome Sala</FormLabel>
+              <Input
+                value={selectedCliente?.nome_sala || ""}
+                onChange={(e) =>
+                  setSelectedCliente({
+                    ...selectedCliente!,
+                    nome_sala: e.target.value,
+                  })
+                }
+              />
+            </FormControl>
+            <FormControl mb={3}>
+              <FormLabel>Email</FormLabel>
+              <Input
+                value={selectedCliente?.email || ""}
+                onChange={(e) =>
+                  setSelectedCliente({
+                    ...selectedCliente!,
+                    email: e.target.value,
+                  })
+                }
+              />
+            </FormControl>
+            <FormControl mb={3}>
+              <FormLabel>Referente</FormLabel>
+              <Input
+                value={selectedCliente?.referente || ""}
+                onChange={(e) =>
+                  setSelectedCliente({
+                    ...selectedCliente!,
+                    referente: e.target.value,
+                  })
+                }
+              />
+            </FormControl>
+            <FormControl mb={3}>
+              <FormLabel>Telefono</FormLabel>
+              <Input
+                value={selectedCliente?.telefono || ""}
+                onChange={(e) =>
+                  setSelectedCliente({
+                    ...selectedCliente!,
+                    telefono: e.target.value,
+                  })
+                }
+              />
+            </FormControl>
+            <FormControl mb={3}>
+              <FormLabel>Indirizzo</FormLabel>
+              <Input
+                value={selectedCliente?.indirizzo || ""}
+                onChange={(e) =>
+                  setSelectedCliente({
+                    ...selectedCliente!,
+                    indirizzo: e.target.value,
+                  })
+                }
+              />
+            </FormControl>
+            <FormControl>
+              <FormLabel>Orari Apertura</FormLabel>
+              <Input
+                value={selectedCliente?.orari_apertura || ""}
+                onChange={(e) =>
+                  setSelectedCliente({
+                    ...selectedCliente!,
+                    orari_apertura: e.target.value,
+                  })
+                }
+              />
+            </FormControl>
+          </ModalBody>
+          <ModalFooter>
+            <Button colorScheme="blue" mr={3} onClick={handleSave}>
+              Salva
+            </Button>
+            <Button onClick={onClose}>Annulla</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </Flex>
   );
 }
+
