@@ -121,7 +121,7 @@ export default function UtentiPage() {
       {/* Header con logo e bottoni */}
       <Flex justify="space-between" align="center" mb={6}>
         <Box flex="1" textAlign="center">
-          <Image src="/servizinet_logo.jpg" alt="Logo" h="60px" mx="auto" />
+          <Image src="/servizinet_logo.png" alt="Logo" h="60px" mx="auto" />
         </Box>
         <HStack spacing={4} position="absolute" right="40px">
           <Button colorScheme="blue" onClick={() => nav("/dashboard")}>
