@@ -49,6 +49,16 @@ export default function Segnalazione() {
 
   const toast = useToast();
 
+  // Imposta data e ora corrente automaticamente
+  useEffect(() => {
+    const now = new Date();
+    const currentDate = now.toISOString().split('T')[0];
+    const currentTime = now.toTimeString().slice(0, 5);
+    
+    setData(currentDate);
+    setOra(currentTime);
+  }, []);
+
   // Carica dati
   const loadData = async () => {
     try {
@@ -110,8 +120,12 @@ export default function Segnalazione() {
       toast({ title: "Segnalazione inserita", status: "success" });
       setDescrizione("");
       setCategoriaId("");
-      setData("");
-      setOra("");
+      // Reimposta data e ora corrente dopo l'inserimento
+      const now = new Date();
+      const currentDate = now.toISOString().split('T')[0];
+      const currentTime = now.toTimeString().slice(0, 5);
+      setData(currentDate);
+      setOra(currentTime);
       loadData();
     } catch {
       toast({ title: "Errore inserimento segnalazione", status: "error" });
@@ -150,11 +164,17 @@ export default function Segnalazione() {
               type="date"
               value={data}
               onChange={(e) => setData(e.target.value)}
+              readOnly // ✅ Campo in sola lettura
+              bg="gray.100"
+              cursor="not-allowed"
             />
             <Input
               type="time"
               value={ora}
               onChange={(e) => setOra(e.target.value)}
+              readOnly // ✅ Campo in sola lettura
+              bg="gray.100"
+              cursor="not-allowed"
             />
             <Select
               placeholder="Seleziona categoria"
