@@ -1,4 +1,3 @@
-// src/pages/Login.tsx
 import React, { useState } from "react";
 import {
   Box,
@@ -10,9 +9,15 @@ import {
   Image,
   FormControl,
   FormLabel,
+  InputGroup,
+  InputLeftElement,
+  Text,
+  Divider,
+  Link,
 } from "@chakra-ui/react";
+import { EmailIcon, LockIcon } from "@chakra-ui/icons";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";  // ✅ importa useAuth
+import { useAuth } from "../hooks/useAuth";
 import logo from "/servizinet_logo.png";
 
 export default function Login() {
@@ -20,13 +25,11 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const toast = useToast();
   const navigate = useNavigate();
-  const { login } = useAuth();   // ✅ usiamo login dal contesto
+  const { login } = useAuth();
 
   const handleLogin = async () => {
     try {
       const user = await login(email, password);
-
-      // ✅ redirect in base al ruolo
       if (user.ruolo === "admin") {
         navigate("/dashboard");
       } else if (user.ruolo === "operatore") {
@@ -40,35 +43,82 @@ export default function Login() {
   };
 
   return (
-    <Box minH="100vh" display="flex" justifyContent="center" alignItems="center" bg="gray.50">
-      <VStack spacing={6} p={10} bg="white" shadow="xl" borderRadius="lg" w="400px">
-        <Image src={logo} alt="Logo" boxSize="160px" />
-        <Heading size="lg">Accedi al Portale</Heading>
-
-        <FormControl>
-          <FormLabel>Email</FormLabel>
-          <Input
-            type="email"
-            placeholder="Inserisci la tua email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </FormControl>
-
-        <FormControl>
-          <FormLabel>Password</FormLabel>
-          <Input
-            type="password"
-            placeholder="Inserisci la tua password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </FormControl>
-
-        <Button colorScheme="blue" onClick={handleLogin} w="full" mt={4}>
-          Login
-        </Button>
-      </VStack>
+    <Box
+      minH="100vh"
+      display="flex"
+      justifyContent="center"
+      alignItems="center"
+      bgGradient="linear(to-br, blue.100, blue.300)"
+    >
+      <Box
+        bg="white"
+        p={10}
+        borderRadius="2xl"
+        shadow="2xl"
+        w={{ base: "90vw", md: "400px" }}
+        maxW="400px"
+        borderWidth={2}
+        borderColor="blue.200"
+      >
+        <VStack spacing={4}>
+          <Image src={logo} alt="Logo" boxSize="120px" mb={2} />
+          <Heading size="lg" color="blue.700">
+            Accedi al Portale
+          </Heading>
+          <Text color="gray.500" fontSize="md">
+            Benvenuto! Inserisci le tue credenziali per continuare.
+          </Text>
+          <Divider mb={2} />
+          <FormControl>
+            <FormLabel>Email</FormLabel>
+            <InputGroup>
+              <InputLeftElement pointerEvents="none">
+                <EmailIcon color="blue.400" />
+              </InputLeftElement>
+              <Input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                focusBorderColor="blue.400"
+              />
+            </InputGroup>
+          </FormControl>
+          <FormControl>
+            <FormLabel>Password</FormLabel>
+            <InputGroup>
+              <InputLeftElement pointerEvents="none">
+                <LockIcon color="blue.400" />
+              </InputLeftElement>
+              <Input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                focusBorderColor="blue.400"
+              />
+            </InputGroup>
+          </FormControl>
+          <Button
+            colorScheme="blue"
+            onClick={handleLogin}
+            w="full"
+            mt={4}
+            size="lg"
+            borderRadius="md"
+            shadow="sm"
+          >
+            Login
+          </Button>
+          <Link color="blue.500" fontSize="sm" alignSelf="flex-end" href="#">
+            Password dimenticata?
+          </Link>
+          <Divider />
+          <Text color="gray.400" fontSize="xs">
+            © 2025 ServiziNet
+          </Text>
+        </VStack>
+      </Box>
     </Box>
   );
 }
