@@ -65,9 +65,6 @@ export default function Login() {
           <Heading size="lg" color="blue.700">
             Accedi al Portale
           </Heading>
-          <Text color="gray.500" fontSize="md">
-          Inserisci le tue credenziali per continuare
-          </Text>
           <Divider mb={2} />
           <FormControl>
             <FormLabel>Email</FormLabel>
