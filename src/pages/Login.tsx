@@ -110,9 +110,6 @@ export default function Login() {
           >
             Login
           </Button>
-          <Link color="blue.500" fontSize="sm" alignSelf="flex-end" href="#">
-            Password dimenticata?
-          </Link>
           <Divider />
           <Text color="gray.400" fontSize="xs">
             © 2025 ServiziNet
