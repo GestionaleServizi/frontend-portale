@@ -27,8 +27,10 @@ import {
   Input,
   useDisclosure,
   Image,
+  InputGroup,
+  InputLeftElement,
 } from "@chakra-ui/react";
-import { AddIcon, EditIcon, DeleteIcon } from "@chakra-ui/icons";
+import { AddIcon, EditIcon, DeleteIcon, SearchIcon } from "@chakra-ui/icons";
 import { useNavigate } from "react-router-dom";
 
 type Cliente = {
@@ -49,6 +51,10 @@ export default function ClientiPage() {
   const toast = useToast();
   const navigate = useNavigate();
 
+  // Aggiungi stati per i filtri
+  const [filtroNomeSala, setFiltroNomeSala] = useState("");
+  const [filtroEmail, setFiltroEmail] = useState("");
+
   const loadClienti = async () => {
     try {
       const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/clienti`, {
@@ -63,6 +69,19 @@ export default function ClientiPage() {
   useEffect(() => {
     loadClienti();
   }, []);
+
+  // Filtra i clienti in base ai criteri
+  const clientiFiltrati = clienti.filter((cliente) => {
+    const nomeMatch = filtroNomeSala 
+      ? cliente.nome_sala.toLowerCase().includes(filtroNomeSala.toLowerCase())
+      : true;
+    
+    const emailMatch = filtroEmail 
+      ? cliente.email.toLowerCase().includes(filtroEmail.toLowerCase())
+      : true;
+    
+    return nomeMatch && emailMatch;
+  });
 
   const handleSave = async () => {
     if (!selectedCliente) return;
@@ -121,8 +140,41 @@ export default function ClientiPage() {
 
       {/* Tabella clienti */}
       <Box bg="white" p={6} borderRadius="lg" shadow="md">
-        <Flex justify="space-between" mb={4}>
-          <Heading size="md">Lista Clienti</Heading>
+        {/* FILTRI DI RICERCA */}
+        <HStack mb={4} spacing={4} flexWrap="wrap">
+          <InputGroup flex="1" minW="200px">
+            <InputLeftElement pointerEvents="none">
+              <SearchIcon color="gray.300" />
+            </InputLeftElement>
+            <Input
+              placeholder="Cerca per nome sala..."
+              value={filtroNomeSala}
+              onChange={(e) => setFiltroNomeSala(e.target.value)}
+            />
+          </InputGroup>
+
+          <InputGroup flex="1" minW="200px">
+            <InputLeftElement pointerEvents="none">
+              <SearchIcon color="gray.300" />
+            </InputLeftElement>
+            <Input
+              placeholder="Cerca per email..."
+              value={filtroEmail}
+              onChange={(e) => setFiltroEmail(e.target.value)}
+            />
+          </InputGroup>
+
+          <Button
+            onClick={() => {
+              setFiltroNomeSala("");
+              setFiltroEmail("");
+            }}
+            colorScheme="gray"
+            px={4}
+          >
+            Reset Filtri
+          </Button>
+
           <Button
             colorScheme="green"
             leftIcon={<AddIcon />}
@@ -138,10 +190,13 @@ export default function ClientiPage() {
               });
               onOpen();
             }}
+            ml="auto"
+            px={4}
+            minW="140px"
           >
             Aggiungi Cliente
           </Button>
-        </Flex>
+        </HStack>
 
         <Table>
           <Thead>
@@ -156,7 +211,7 @@ export default function ClientiPage() {
             </Tr>
           </Thead>
           <Tbody>
-            {clienti.map((c) => (
+            {clientiFiltrati.map((c) => (
               <Tr key={c.id}>
                 <Td>{c.nome_sala}</Td>
                 <Td>{c.email}</Td>
@@ -186,6 +241,16 @@ export default function ClientiPage() {
             ))}
           </Tbody>
         </Table>
+
+        {/* Messaggio se nessun risultato */}
+        {clientiFiltrati.length === 0 && (
+          <Box textAlign="center" py={4} color="gray.500">
+            {clienti.length === 0 
+              ? "Nessun cliente trovato" 
+              : "Nessun cliente corrisponde ai filtri selezionati"
+            }
+          </Box>
+        )}
       </Box>
 
       {/* Modal per inserimento/modifica */}
@@ -212,6 +277,7 @@ export default function ClientiPage() {
             <FormControl mb={3}>
               <FormLabel>Email</FormLabel>
               <Input
+                type="email"
                 value={selectedCliente?.email || ""}
                 onChange={(e) =>
                   setSelectedCliente({
