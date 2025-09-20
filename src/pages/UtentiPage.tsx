@@ -1,3 +1,4 @@
+// src/pages/UtentiPage.tsx
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 import {
@@ -49,7 +50,10 @@ export default function UtentiPage() {
   const [utenti, setUtenti] = useState<Utente[]>([]);
   const [clienti, setClienti] = useState<Cliente[]>([]);
   const [selected, setSelected] = useState<Utente | null>(null);
-  const [formData, setFormData] = useState<Partial<Utente> & { password?: string }>({});
+  const [email, setEmail] = useState("");
+  const [ruolo, setRuolo] = useState<"admin" | "operatore">("operatore");
+  const [clienteId, setClienteId] = useState<number | null>(null);
+  const [password, setPassword] = useState("");
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const navigate = useNavigate();
@@ -86,10 +90,38 @@ export default function UtentiPage() {
 
   const handleSave = async () => {
     try {
+      // Validazione
+      if (!email) {
+        toast({ title: "Email obbligatoria", status: "warning" });
+        return;
+      }
+
+      if (ruolo === "operatore" && !clienteId) {
+        toast({ title: "Cliente obbligatorio per operatore", status: "warning" });
+        return;
+      }
+
+      if (!selected && !password) {
+        toast({ title: "Password obbligatoria per nuovo utente", status: "warning" });
+        return;
+      }
+
       const method = selected ? "PUT" : "POST";
       const url = selected
         ? `${import.meta.env.VITE_API_BASE_URL}/utenti/${selected.id}`
         : `${import.meta.env.VITE_API_BASE_URL}/utenti`;
+
+      // Prepara i dati da inviare (SOLO campi necessari)
+      const dataToSend: any = {
+        email,
+        ruolo,
+        cliente_id: clienteId
+      };
+
+      // Aggiungi password solo se presente (per nuovi utenti o modifica)
+      if (password) {
+        dataToSend.password = password;
+      }
 
       const res = await fetch(url, {
         method,
@@ -97,7 +129,7 @@ export default function UtentiPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(dataToSend),
       });
 
       if (!res.ok) throw new Error("Errore salvataggio");
@@ -106,9 +138,15 @@ export default function UtentiPage() {
         title: selected ? "Utente aggiornato" : "Utente creato",
         status: "success",
       });
-      onClose();
+      
+      // Reset form
+      setEmail("");
+      setRuolo("operatore");
+      setClienteId(null);
+      setPassword("");
       setSelected(null);
-      setFormData({});
+      
+      onClose();
       loadUtenti();
     } catch {
       toast({ title: "Errore salvataggio", status: "error" });
@@ -132,17 +170,23 @@ export default function UtentiPage() {
   const openModal = (utente?: Utente) => {
     if (utente) {
       setSelected(utente);
-      setFormData(utente);
+      setEmail(utente.email);
+      setRuolo(utente.ruolo);
+      setClienteId(utente.cliente_id || null);
+      setPassword(""); // Reset password per modifica
     } else {
       setSelected(null);
-      setFormData({});
+      setEmail("");
+      setRuolo("operatore");
+      setClienteId(null);
+      setPassword("");
     }
     onOpen();
   };
 
   return (
     <Flex minH="100vh" bg="gray.50" direction="column" p={8}>
-      {/* Header come ClientiPage */}
+      {/* Header */}
       <Flex justify="space-between" align="center" mb={6}>
         <Heading size="lg">👥 Gestione Utenti</Heading>
         <Image
@@ -234,48 +278,39 @@ export default function UtentiPage() {
               <FormLabel>Email</FormLabel>
               <Input
                 type="email"
-                value={formData.email || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </FormControl>
+            
             <FormControl mb={3}>
               <FormLabel>Password {selected && "(lascia vuoto per non cambiare)"}</FormLabel>
               <Input
                 type="password"
-                value={formData.password || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, password: e.target.value })
-                }
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={selected ? "Nuova password (opzionale)" : "Password"}
               />
             </FormControl>
+            
             <FormControl mb={3}>
               <FormLabel>Ruolo</FormLabel>
               <Select
-                value={formData.ruolo || ""}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    ruolo: e.target.value as "admin" | "operatore",
-                  })
-                }
+                value={ruolo}
+                onChange={(e) => setRuolo(e.target.value as "admin" | "operatore")}
               >
                 <option value="operatore">Operatore</option>
                 <option value="admin">Admin</option>
               </Select>
             </FormControl>
+            
             <FormControl mb={3}>
               <FormLabel>Cliente (solo per Operatore)</FormLabel>
               <Select
-                placeholder="Nessuno"
-                value={formData.cliente_id || ""}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    cliente_id: e.target.value ? Number(e.target.value) : null,
-                  })
-                }
+                placeholder="Seleziona cliente"
+                value={clienteId || ""}
+                onChange={(e) => setClienteId(e.target.value ? Number(e.target.value) : null)}
+                isDisabled={ruolo === "admin"}
               >
                 {clienti.map((c) => (
                   <option key={c.id} value={c.id}>
