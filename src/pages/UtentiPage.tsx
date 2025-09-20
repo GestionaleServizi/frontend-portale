@@ -28,8 +28,10 @@ import {
   Select,
   useDisclosure,
   Image,
+  InputGroup,
+  InputLeftElement,
 } from "@chakra-ui/react";
-import { AddIcon, EditIcon, DeleteIcon } from "@chakra-ui/icons";
+import { AddIcon, EditIcon, DeleteIcon, SearchIcon } from "@chakra-ui/icons";
 import { useNavigate } from "react-router-dom";
 
 type Utente = {
@@ -57,6 +59,10 @@ export default function UtentiPage() {
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const navigate = useNavigate();
+
+  // Aggiungi stati per i filtri
+  const [filtroEmail, setFiltroEmail] = useState("");
+  const [filtroRuolo, setFiltroRuolo] = useState("");
 
   // Carica utenti e clienti
   const loadUtenti = async () => {
@@ -87,6 +93,19 @@ export default function UtentiPage() {
     loadUtenti();
     loadClienti();
   }, []);
+
+  // Filtra gli utenti in base ai criteri
+  const utentiFiltrati = utenti.filter((utente) => {
+    const emailMatch = filtroEmail 
+      ? utente.email.toLowerCase().includes(filtroEmail.toLowerCase())
+      : true;
+    
+    const ruoloMatch = filtroRuolo 
+      ? utente.ruolo === filtroRuolo
+      : true;
+    
+    return emailMatch && ruoloMatch;
+  });
 
   const handleSave = async () => {
     try {
@@ -223,11 +242,44 @@ export default function UtentiPage() {
 
       {/* Box tabella */}
       <Box bg="white" p={6} borderRadius="lg" shadow="md">
-        <HStack justify="flex-end" mb={4}>
+        {/* FILTRI */}
+        <HStack mb={4} spacing={4}>
+          <InputGroup>
+            <InputLeftElement pointerEvents="none">
+              <SearchIcon color="gray.300" />
+            </InputLeftElement>
+            <Input
+              placeholder="Cerca per email..."
+              value={filtroEmail}
+              onChange={(e) => setFiltroEmail(e.target.value)}
+            />
+          </InputGroup>
+          
+          <Select
+            placeholder="Tutti i ruoli"
+            value={filtroRuolo}
+            onChange={(e) => setFiltroRuolo(e.target.value)}
+            width="200px"
+          >
+            <option value="admin">Admin</option>
+            <option value="operatore">Operatore</option>
+          </Select>
+
+          <Button
+            onClick={() => {
+              setFiltroEmail("");
+              setFiltroRuolo("");
+            }}
+            colorScheme="gray"
+          >
+            Reset Filtri
+          </Button>
+
           <Button
             leftIcon={<AddIcon />}
             colorScheme="blue"
             onClick={() => openModal()}
+            ml="auto"
           >
             Aggiungi Utente
           </Button>
@@ -244,7 +296,7 @@ export default function UtentiPage() {
             </Tr>
           </Thead>
           <Tbody>
-            {utenti.map((u) => (
+            {utentiFiltrati.map((u) => (
               <Tr key={u.id}>
                 <Td>{u.email}</Td>
                 <Td>{u.ruolo}</Td>
@@ -279,6 +331,16 @@ export default function UtentiPage() {
             ))}
           </Tbody>
         </Table>
+
+        {/* Messaggio se nessun risultato */}
+        {utentiFiltrati.length === 0 && (
+          <Box textAlign="center" py={4} color="gray.500">
+            {utenti.length === 0 
+              ? "Nessun utente trovato" 
+              : "Nessun utente corrisponde ai filtri selezionati"
+            }
+          </Box>
+        )}
       </Box>
 
       {/* Modale Aggiungi/Modifica Utente */}
