@@ -275,14 +275,16 @@ export default function UtentiPage() {
             Reset Filtri
           </Button>
 
-          <Button
-            leftIcon={<AddIcon />}
-            colorScheme="blue"
-            onClick={() => openModal()}
-            ml="auto"
-          >
-            Aggiungi Utente
-          </Button>
+         <Button
+  leftIcon={<AddIcon />}
+  colorScheme="blue"
+  onClick={() => openModal()}
+  ml="auto"
+  px={4}
+  minW="160px" // ✅ Più larghezza per il testo completo
+>
+  Aggiungi Utente
+</Button>
         </HStack>
 
         <Table>
