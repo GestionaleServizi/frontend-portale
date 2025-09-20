@@ -49,7 +49,7 @@ export default function Segnalazione() {
 
   const toast = useToast();
 
-  // Imposta data e ora corrente automaticamente
+  // Imposta data e ora corrente automaticamente al caricamento
   useEffect(() => {
     const now = new Date();
     const currentDate = now.toISOString().split('T')[0];
@@ -92,12 +92,17 @@ export default function Segnalazione() {
 
   // Inserisci nuova segnalazione
   const handleSubmit = async () => {
-    if (!descrizione || !categoriaId || !data || !ora) {
-      toast({ title: "Compila tutti i campi", status: "warning" });
+    if (!descrizione || !categoriaId) {
+      toast({ title: "Compila descrizione e categoria", status: "warning" });
       return;
     }
 
     try {
+      // ✅ CALCOLA DATA E ORA CORRENTE AL MOMENTO DELL'INSERIMENTO
+      const now = new Date();
+      const currentDate = now.toISOString().split('T')[0];
+      const currentTime = now.toTimeString().slice(0, 5);
+      
       const res = await fetch(
         `${import.meta.env.VITE_API_BASE_URL}/segnalazioni`,
         {
@@ -107,8 +112,8 @@ export default function Segnalazione() {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            data,
-            ora,
+            data: currentDate, // ✅ Usa la data corrente al momento dell'invio
+            ora: currentTime,  // ✅ Usa l'ora corrente al momento dell'invio
             descrizione,
             categoria_id: categoriaId,
           }),
@@ -120,10 +125,7 @@ export default function Segnalazione() {
       toast({ title: "Segnalazione inserita", status: "success" });
       setDescrizione("");
       setCategoriaId("");
-      // Reimposta data e ora corrente dopo l'inserimento
-      const now = new Date();
-      const currentDate = now.toISOString().split('T')[0];
-      const currentTime = now.toTimeString().slice(0, 5);
+      // ✅ Aggiorna anche i campi visualizzati con data/ora corrente
       setData(currentDate);
       setOra(currentTime);
       loadData();
@@ -143,7 +145,7 @@ export default function Segnalazione() {
     <Flex minH="100vh" bg="gray.50" direction="column" p={8}>
       {/* Header */}
       <VStack spacing={2} mb={6}>
-        <img src="/servizinet_logo.png" alt="Logo" width="120" /> {/* ✅ logo corretto */}
+        <img src="/servizinet_logo.png" alt="Logo" width="120" />
         <Heading>Inserimento Segnalazione</Heading>
         <Text>
           👤 {user?.email} | 🏢 {cliente?.nome_sala || "N/A"}
@@ -164,7 +166,7 @@ export default function Segnalazione() {
               type="date"
               value={data}
               onChange={(e) => setData(e.target.value)}
-              readOnly // ✅ Campo in sola lettura
+              readOnly
               bg="gray.100"
               cursor="not-allowed"
             />
@@ -172,7 +174,7 @@ export default function Segnalazione() {
               type="time"
               value={ora}
               onChange={(e) => setOra(e.target.value)}
-              readOnly // ✅ Campo in sola lettura
+              readOnly
               bg="gray.100"
               cursor="not-allowed"
             />
