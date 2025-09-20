@@ -111,17 +111,19 @@ export default function UtentiPage() {
         ? `${import.meta.env.VITE_API_BASE_URL}/utenti/${selected.id}`
         : `${import.meta.env.VITE_API_BASE_URL}/utenti`;
 
-      // Prepara i dati da inviare (SOLO campi necessari)
+      // ✅ CORRETTO: Usa cliente_id come si aspetta il backend
       const dataToSend: any = {
         email,
         ruolo,
-        cliente_id: clienteId
+        cliente_id: clienteId  // ← QUESTO È IL CAMPO CORRETTO
       };
 
-      // Aggiungi password solo se presente (per nuovi utenti o modifica)
+      // Aggiungi password solo se presente
       if (password) {
         dataToSend.password = password;
       }
+
+      console.log("Dati inviati:", dataToSend); // Per debug
 
       const res = await fetch(url, {
         method,
@@ -132,7 +134,15 @@ export default function UtentiPage() {
         body: JSON.stringify(dataToSend),
       });
 
-      if (!res.ok) throw new Error("Errore salvataggio");
+      // ✅ Aggiungi debug della risposta
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Errore backend:", errorText);
+        throw new Error(`Errore salvataggio: ${res.status} ${errorText}`);
+      }
+
+      const result = await res.json();
+      console.log("Successo:", result);
 
       toast({
         title: selected ? "Utente aggiornato" : "Utente creato",
@@ -148,8 +158,14 @@ export default function UtentiPage() {
       
       onClose();
       loadUtenti();
-    } catch {
-      toast({ title: "Errore salvataggio", status: "error" });
+    } catch (error: any) {
+      console.error("Errore completo:", error);
+      toast({ 
+        title: "Errore salvataggio", 
+        description: error.message,
+        status: "error",
+        duration: 5000,
+      });
     }
   };
 
@@ -173,7 +189,7 @@ export default function UtentiPage() {
       setEmail(utente.email);
       setRuolo(utente.ruolo);
       setClienteId(utente.cliente_id || null);
-      setPassword(""); // Reset password per modifica
+      setPassword("");
     } else {
       setSelected(null);
       setEmail("");
