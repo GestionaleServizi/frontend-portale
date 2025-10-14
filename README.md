@@ -19,3 +19,4 @@ npm start   # serve dist su PORT (default 3000)
 
 ## Env
 Copia `.env.example` in `.env` e imposta `VITE_API_BASEURL` se vuoi chiamare un backend.
+
