@@ -303,7 +303,7 @@ export default function DashboardAdmin() {
 
   return (
     <Box minH="100vh" bg="gray.50" position="relative">
-      {/* Header */}
+      {/* Header - CAMBIATO COLORE TESTO */}
       <Box bg={bgGradient} px={6} py={4} shadow="lg">
         <Flex align="center" justify="space-between">
           <HStack spacing={4}>
@@ -318,7 +318,7 @@ export default function DashboardAdmin() {
               <Heading size="lg" color="white" fontWeight="bold">
                 Dashboard Amministratore
               </Heading>
-              <Text color="whiteAlpha.800" fontSize="sm">
+              <Text color="whiteAlpha.900" fontSize="sm" fontWeight="medium"> {/* CAMBIATO COLORE */}
                 Gestione completa del sistema
               </Text>
             </Box>
@@ -346,8 +346,9 @@ export default function DashboardAdmin() {
       </Box>
 
       <Box p={6}>
-        {/* KPI Cards */}
-        <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={6} mb={8}>
+        {/* PRIMA RIGA: Statistiche segnalazioni + Quick Access Cards */}
+        <SimpleGrid columns={{ base: 1, md: 2, lg: 6 }} spacing={6} mb={8}>
+          {/* Statistiche Segnalazioni */}
           <ScaleFade in={!isLoading} initialScale={0.9}>
             <Card 
               bg={cardBg} 
@@ -356,135 +357,62 @@ export default function DashboardAdmin() {
               borderColor={borderColor}
               _hover={{ shadow: "xl", transform: "translateY(-2px)" }}
               transition="all 0.3s"
+              gridColumn={{ base: "1", md: "span 2" }}
             >
               <CardBody>
-                <Stat>
-                  <StatLabel display="flex" alignItems="center" gap={2} color="gray.600">
-                    <Icon as={FiBarChart2} color="blue.500" />
-                    Totale Segnalazioni
-                  </StatLabel>
-                  <StatNumber color="blue.600" fontSize="3xl">
-                    {segnalazioniFiltrate.length}
-                  </StatNumber>
-                  <StatHelpText>
-                    <Text color="green.500" display="flex" alignItems="center" gap={1}>
-                      <FiTrendingUp /> Filtrate
-                    </Text>
-                  </StatHelpText>
-                </Stat>
-                <Progress 
-                  value={(segnalazioniFiltrate.length / segnalazioni.length) * 100} 
-                  colorScheme="blue" 
-                  mt={2} 
-                  size="sm" 
-                  borderRadius="full" 
-                />
+                <VStack spacing={4} align="stretch">
+                  <HStack justify="space-between">
+                    <Stat>
+                      <StatLabel display="flex" alignItems="center" gap={2} color="gray.600">
+                        <Icon as={FiBarChart2} color="blue.500" />
+                        Segnalazioni Filtrate
+                      </StatLabel>
+                      <StatNumber color="blue.600" fontSize="4xl">
+                        {segnalazioniFiltrate.length}
+                      </StatNumber>
+                    </Stat>
+                  </HStack>
+                  <SimpleGrid columns={3} spacing={4}>
+                    <Box textAlign="center">
+                      <Text fontSize="2xl" fontWeight="bold" color="red.500">
+                        {segnalazioniAperte}
+                      </Text>
+                      <Text fontSize="sm" color="gray.600">
+                        Aperte
+                      </Text>
+                      <Text fontSize="xs" color="gray.500">
+                        {segnalazioniUrgenti} urgenti
+                      </Text>
+                    </Box>
+                    <Box textAlign="center">
+                      <Text fontSize="2xl" fontWeight="bold" color="purple.500">
+                        {segnalazioniInLavorazione}
+                      </Text>
+                      <Text fontSize="sm" color="gray.600">
+                        In Lavorazione
+                      </Text>
+                      <Text fontSize="xs" color="gray.500">
+                        In corso
+                      </Text>
+                    </Box>
+                    <Box textAlign="center">
+                      <Text fontSize="2xl" fontWeight="bold" color="green.500">
+                        {segnalazioniRisolte}
+                      </Text>
+                      <Text fontSize="sm" color="gray.600">
+                        Risolte
+                      </Text>
+                      <Text fontSize="xs" color="gray.500">
+                        Completate
+                      </Text>
+                    </Box>
+                  </SimpleGrid>
+                </VStack>
               </CardBody>
             </Card>
           </ScaleFade>
 
-          <ScaleFade in={!isLoading} initialScale={0.9} delay={0.1}>
-            <Card 
-              bg={cardBg} 
-              shadow="lg" 
-              border="1px" 
-              borderColor={borderColor}
-              _hover={{ shadow: "xl", transform: "translateY(-2px)" }}
-              transition="all 0.3s"
-            >
-              <CardBody>
-                <Stat>
-                  <StatLabel display="flex" alignItems="center" gap={2} color="gray.600">
-                    <Icon as={FiAlertCircle} color="red.500" />
-                    Segnalazioni Aperte
-                  </StatLabel>
-                  <StatNumber color="red.600" fontSize="3xl">
-                    {segnalazioniAperte}
-                  </StatNumber>
-                  <StatHelpText>
-                    {segnalazioniUrgenti} urgenti
-                  </StatHelpText>
-                </Stat>
-                <Progress 
-                  value={(segnalazioniAperte / segnalazioni.length) * 100} 
-                  colorScheme="red" 
-                  mt={2} 
-                  size="sm" 
-                  borderRadius="full" 
-                />
-              </CardBody>
-            </Card>
-          </ScaleFade>
-
-          <ScaleFade in={!isLoading} initialScale={0.9} delay={0.2}>
-            <Card 
-              bg={cardBg} 
-              shadow="lg" 
-              border="1px" 
-              borderColor={borderColor}
-              _hover={{ shadow: "xl", transform: "translateY(-2px)" }}
-              transition="all 0.3s"
-            >
-              <CardBody>
-                <Stat>
-                  <StatLabel display="flex" alignItems="center" gap={2} color="gray.600">
-                    <Icon as={FiClock} color="purple.500" />
-                    In Lavorazione
-                  </StatLabel>
-                  <StatNumber color="purple.600" fontSize="3xl">
-                    {segnalazioniInLavorazione}
-                  </StatNumber>
-                  <StatHelpText>
-                    In corso
-                  </StatHelpText>
-                </Stat>
-                <Progress 
-                  value={(segnalazioniInLavorazione / segnalazioni.length) * 100} 
-                  colorScheme="purple" 
-                  mt={2} 
-                  size="sm" 
-                  borderRadius="full" 
-                />
-              </CardBody>
-            </Card>
-          </ScaleFade>
-
-          <ScaleFade in={!isLoading} initialScale={0.9} delay={0.3}>
-            <Card 
-              bg={cardBg} 
-              shadow="lg" 
-              border="1px" 
-              borderColor={borderColor}
-              _hover={{ shadow: "xl", transform: "translateY(-2px)" }}
-              transition="all 0.3s"
-            >
-              <CardBody>
-                <Stat>
-                  <StatLabel display="flex" alignItems="center" gap={2} color="gray.600">
-                    <Icon as={FiCheckCircle} color="green.500" />
-                    Risolte
-                  </StatLabel>
-                  <StatNumber color="green.600" fontSize="3xl">
-                    {segnalazioniRisolte}
-                  </StatNumber>
-                  <StatHelpText>
-                    Completate
-                  </StatHelpText>
-                </Stat>
-                <Progress 
-                  value={(segnalazioniRisolte / segnalazioni.length) * 100} 
-                  colorScheme="green" 
-                  mt={2} 
-                  size="sm" 
-                  borderRadius="full" 
-                />
-              </CardBody>
-            </Card>
-          </ScaleFade>
-        </SimpleGrid>
-
-        {/* Quick Access Cards */}
-        <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6} mb={8}>
+          {/* Quick Access Cards - SPOSTATE IN ALTO */}
           {[
             { icon: FiUsers, label: "Gestione Utenti", count: utenti.length, color: "blue", path: "/utenti" },
             { icon: FiFolder, label: "Categorie", count: categorie.length, color: "purple", path: "/categorie" },
@@ -506,13 +434,11 @@ export default function DashboardAdmin() {
                 onClick={() => navigate(item.path)}
               >
                 <CardBody>
-                  <VStack spacing={3} align="stretch">
-                    <HStack justify="space-between">
-                      <Icon as={item.icon} boxSize={6} color={`${item.color}.500`} />
-                      <Badge colorScheme={item.color} variant="subtle">
-                        {item.count}
-                      </Badge>
-                    </HStack>
+                  <VStack spacing={3} align="stretch" textAlign="center">
+                    <Icon as={item.icon} boxSize={8} color={`${item.color}.500`} mx="auto" />
+                    <Badge colorScheme={item.color} variant="subtle" width="fit-content" mx="auto">
+                      {item.count}
+                    </Badge>
                     <Text fontWeight="semibold" color="gray.700">
                       {item.label}
                     </Text>
@@ -537,12 +463,11 @@ export default function DashboardAdmin() {
               <HStack spacing={4} flexWrap="wrap">
                 {/* Filtro Temporale */}
                 <Select
-                  placeholder="Periodo temporale"
+                  placeholder="Tutti i periodi"
                   value={filtroTemporale}
                   onChange={(e) => setFiltroTemporale(e.target.value as FiltroTemporale)}
-                  maxW="250px"
+                  maxW="200px"
                 >
-                  <option value="tutti">Tutti i periodi</option>
                   <option value="oggi">Oggi</option>
                   <option value="ultimi-7-giorni">Ultimi 7 giorni</option>
                   <option value="ultimi-30-giorni">Ultimi 30 giorni</option>
@@ -558,24 +483,16 @@ export default function DashboardAdmin() {
                       type="date"
                       value={dataInizio}
                       onChange={(e) => setDataInizio(e.target.value)}
-                      maxW="180px"
+                      maxW="150px"
                     />
                     <Text color="gray.600">al</Text>
                     <Input
                       type="date"
                       value={dataFine}
                       onChange={(e) => setDataFine(e.target.value)}
-                      maxW="180px"
+                      maxW="150px"
                     />
                   </>
-                )}
-
-                {/* Indicatore periodo selezionato */}
-                {(filtroTemporale !== "tutti" && filtroTemporale !== "personalizzato") && (
-                  <Badge colorScheme="blue" variant="subtle">
-                    {dataInizio && `Dal ${new Date(dataInizio).toLocaleDateString("it-IT")}`}
-                    {dataFine && ` al ${new Date(dataFine).toLocaleDateString("it-IT")}`}
-                  </Badge>
                 )}
 
                 {/* Search */}
@@ -588,17 +505,6 @@ export default function DashboardAdmin() {
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
-                  {searchTerm && (
-                    <InputRightElement>
-                      <IconButton
-                        aria-label="Clear search"
-                        icon={<FiFilter />}
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setSearchTerm("")}
-                      />
-                    </InputRightElement>
-                  )}
                 </InputGroup>
 
                 {/* Filtri categoria e cliente */}
@@ -606,7 +512,7 @@ export default function DashboardAdmin() {
                   placeholder="Tutte le categorie"
                   value={filtroCategoria}
                   onChange={(e) => setFiltroCategoria(e.target.value)}
-                  maxW="250px"
+                  maxW="200px"
                 >
                   {categorie.map((c) => (
                     <option key={c.id} value={c.nome_categoria}>
@@ -619,7 +525,7 @@ export default function DashboardAdmin() {
                   placeholder="Tutti i clienti"
                   value={filtroCliente}
                   onChange={(e) => setFiltroCliente(e.target.value)}
-                  maxW="250px"
+                  maxW="200px"
                 >
                   {clienti.map((c) => (
                     <option key={c.id} value={c.nome_sala}>
