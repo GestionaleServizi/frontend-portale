@@ -30,12 +30,6 @@ import {
   StatHelpText,
   Progress,
   Badge,
-  Avatar,
-  AvatarGroup,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
   IconButton,
   InputGroup,
   InputLeftElement,
@@ -63,15 +57,8 @@ import {
   FiClock,
   FiCheckCircle,
   FiAlertCircle,
-  FiSettings,
-  FiUser,
-  FiBarChart2, // Sostituito FiBarChart3 con FiBarChart2
+  FiBarChart2,
 } from "react-icons/fi";
-import { 
-  ChevronDownIcon, 
-  DownloadIcon,
-  StarIcon 
-} from "@chakra-ui/icons";
 
 type Segnalazione = {
   id: number;
@@ -93,14 +80,8 @@ const pulseAnimation = keyframes`
   100% { transform: scale(1); }
 `;
 
-const floatAnimation = keyframes`
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-5px); }
-  100% { transform: translateY(0px); }
-`;
-
 export default function DashboardAdmin() {
-  const { token, logout, user } = useAuth();
+  const { token, logout } = useAuth();
   const [segnalazioni, setSegnalazioni] = useState<Segnalazione[]>([]);
   const [categorie, setCategorie] = useState<Categoria[]>([]);
   const [clienti, setClienti] = useState<Cliente[]>([]);
@@ -147,13 +128,6 @@ export default function DashboardAdmin() {
       setClienti(await cliRes.json());
       setUtenti(await uteRes.json());
 
-      toast({
-        title: "Dati caricati",
-        description: `${segnalazioniData.length} segnalazioni trovate`,
-        status: "success",
-        duration: 2000,
-        isClosable: true,
-      });
     } catch {
       toast({ 
         title: "Errore caricamento dati", 
@@ -276,29 +250,21 @@ export default function DashboardAdmin() {
             </Box>
           </HStack>
 
+          {/* Pulsanti originali - MANTENUTI COME PRIMA */}
           <HStack spacing={3}>
-            <Menu>
-              <MenuButton
-                as={Button}
-                rightIcon={<ChevronDownIcon />}
-                bg="whiteAlpha.200"
-                _hover={{ bg: "whiteAlpha.300" }}
-                color="white"
-                leftIcon={<FiUser />}
-              >
-                {user?.nome || "Admin"}
-              </MenuButton>
-              <MenuList>
-                <MenuItem icon={<FiSettings />}>Impostazioni</MenuItem>
-                <MenuItem icon={<FiUser />}>Profilo</MenuItem>
-              </MenuList>
-            </Menu>
-            <Button
-              colorScheme="whiteAlpha"
-              leftIcon={<FiLogOut />}
-              onClick={logout}
-              variant="outline"
-            >
+            <Button colorScheme="whiteAlpha" leftIcon={<FiUsers />} onClick={() => nav("/utenti")}>
+              Utenti
+            </Button>
+            <Button colorScheme="whiteAlpha" leftIcon={<FiFolder />} onClick={() => nav("/categorie")}>
+              Categorie
+            </Button>
+            <Button colorScheme="whiteAlpha" leftIcon={<FiBriefcase />} onClick={() => nav("/clienti")}>
+              Clienti
+            </Button>
+            <Button colorScheme="whiteAlpha" leftIcon={<FiFileText />} onClick={esportaCSV}>
+              CSV
+            </Button>
+            <Button colorScheme="whiteAlpha" leftIcon={<FiLogOut />} onClick={logout} variant="outline">
               Logout
             </Button>
           </HStack>
@@ -306,32 +272,7 @@ export default function DashboardAdmin() {
       </Box>
 
       <Box p={6}>
-        {/* Quick Actions */}
-        <Flex justify="space-between" align="center" mb={6}>
-          <Heading size="md" color="gray.700">
-            Panoramica Sistema
-          </Heading>
-          <HStack spacing={3}>
-            <Button
-              colorScheme="blue"
-              leftIcon={<FiPlus />}
-              onClick={() => navigate("/nuova-segnalazione")}
-              shadow="md"
-            >
-              Nuova Segnalazione
-            </Button>
-            <Button
-              colorScheme="green"
-              leftIcon={<FiDownload />}
-              onClick={esportaCSV}
-              shadow="md"
-            >
-              Esporta CSV
-            </Button>
-          </HStack>
-        </Flex>
-
-        {/* KPI Cards */}
+        {/* KPI Cards - Solo miglioramento grafico */}
         <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={6} mb={8}>
           <ScaleFade in={!isLoading} initialScale={0.9}>
             <Card 
@@ -345,7 +286,7 @@ export default function DashboardAdmin() {
               <CardBody>
                 <Stat>
                   <StatLabel display="flex" alignItems="center" gap={2} color="gray.600">
-                    <Icon as={FiBarChart2} color="blue.500" /> {/* Cambiato qui */}
+                    <Icon as={FiBarChart2} color="blue.500" />
                     Totale Segnalazioni
                   </StatLabel>
                   <StatNumber color="blue.600" fontSize="3xl">
@@ -462,7 +403,7 @@ export default function DashboardAdmin() {
           </ScaleFade>
         </SimpleGrid>
 
-        {/* Quick Access Cards */}
+        {/* Quick Access Cards - Solo miglioramento grafico */}
         <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6} mb={8}>
           {[
             { icon: FiUsers, label: "Gestione Utenti", count: utenti.length, color: "blue", path: "/utenti" },
@@ -505,7 +446,7 @@ export default function DashboardAdmin() {
           ))}
         </SimpleGrid>
 
-        {/* Filtri e Ricerca */}
+        {/* Filtri e Ricerca - Solo miglioramento grafico */}
         <Card bg={cardBg} shadow="md" border="1px" borderColor={borderColor} mb={6}>
           <CardBody>
             <VStack spacing={4} align="stretch">
@@ -579,19 +520,19 @@ export default function DashboardAdmin() {
                     setSearchTerm("");
                   }}
                 >
-                  Reset
+                  Reset Filtri
                 </Button>
               </HStack>
             </VStack>
           </CardBody>
         </Card>
 
-        {/* Tabella Segnalazioni */}
+        {/* Tabella Segnalazioni - Solo miglioramento grafico */}
         <Card bg={cardBg} shadow="lg" border="1px" borderColor={borderColor}>
           <CardHeader pb={0}>
             <Flex justify="space-between" align="center">
               <Heading size="md" color="gray.700">
-                Segnalazioni Recenti
+                Segnalazioni
               </Heading>
               <Text color="gray.500" fontSize="sm">
                 {segnalazioniFiltrate.length} risultati
@@ -603,32 +544,24 @@ export default function DashboardAdmin() {
               <Table variant="simple">
                 <Thead bg="gray.50">
                   <Tr>
-                    <Th>Data/Ora</Th>
+                    <Th>Data</Th>
+                    <Th>Ora</Th>
                     <Th>Categoria</Th>
-                    <Th>Cliente</Th>
+                    <Th>Sala</Th>
                     <Th>Descrizione</Th>
                     <Th>Priorità</Th>
                     <Th>Stato</Th>
-                    <Th>Azioni</Th>
                   </Tr>
                 </Thead>
                 <Tbody>
-                  {segnalazioniFiltrate.slice(0, 10).map((s) => (
+                  {segnalazioniFiltrate.map((s) => (
                     <Tr 
                       key={s.id}
                       _hover={{ bg: "gray.50" }}
                       transition="background 0.2s"
                     >
-                      <Td>
-                        <VStack spacing={0} align="start">
-                          <Text fontWeight="medium">
-                            {new Date(s.data).toLocaleDateString("it-IT")}
-                          </Text>
-                          <Text fontSize="sm" color="gray.500">
-                            {s.ora}
-                          </Text>
-                        </VStack>
-                      </Td>
+                      <Td>{new Date(s.data).toLocaleDateString("it-IT")}</Td>
+                      <Td>{s.ora}</Td>
                       <Td>
                         <Badge colorScheme="blue" variant="subtle">
                           {s.categoria}
@@ -653,23 +586,6 @@ export default function DashboardAdmin() {
                           <Badge colorScheme={getStatusColor(s.stato)}>
                             {s.stato || "N/A"}
                           </Badge>
-                        </HStack>
-                      </Td>
-                      <Td>
-                        <HStack spacing={1}>
-                          <IconButton
-                            aria-label="View details"
-                            icon={<FiEye />}
-                            size="sm"
-                            variant="ghost"
-                            colorScheme="blue"
-                          />
-                          <IconButton
-                            aria-label="More actions"
-                            icon={<FiMoreVertical />}
-                            size="sm"
-                            variant="ghost"
-                          />
                         </HStack>
                       </Td>
                     </Tr>
