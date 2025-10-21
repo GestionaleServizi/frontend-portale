@@ -43,6 +43,7 @@ import {
   FiFilter,
   FiDownload,
   FiSearch,
+  FiBarChart2,
 } from "react-icons/fi";
 
 type Segnalazione = {
@@ -246,7 +247,7 @@ export default function DashboardAdmin() {
 
   return (
     <Box minH="100vh" bg="gray.50" position="relative">
-      {/* Header - TESTO PIÙ LEGGIBILE */}
+      {/* Header - TESTO MOLTO PIÙ LEGGIBILE */}
       <Box bg={bgGradient} px={6} py={4} shadow="lg">
         <Flex align="center" justify="space-between">
           <HStack spacing={4}>
@@ -258,23 +259,25 @@ export default function DashboardAdmin() {
               shadow="md"
             />
             <Box>
-              <Heading size="lg" color="white" fontWeight="bold">
+              <Heading size="lg" color="white" fontWeight="bold" textShadow="0 1px 2px rgba(0,0,0,0.2)">
                 Dashboard Amministratore
               </Heading>
-              <Text color="white" fontSize="sm" fontWeight="medium" opacity={0.9}>
+              <Text color="white" fontSize="sm" fontWeight="semibold" opacity={0.95} textShadow="0 1px 1px rgba(0,0,0,0.2)">
                 Gestione completa del sistema
               </Text>
             </Box>
           </HStack>
 
-          {/* Pulsanti header - TESTO PIÙ LEGGIBILE */}
+          {/* Pulsanti header - TESTO MOLTO LEGGIBILE */}
           <HStack spacing={3}>
             <Button 
               colorScheme="whiteAlpha" 
               leftIcon={<FiUsers />} 
               onClick={() => navigate("/utenti")}
               color="white"
-              _hover={{ bg: "whiteAlpha.300" }}
+              fontWeight="semibold"
+              _hover={{ bg: "whiteAlpha.300", transform: "translateY(-1px)" }}
+              _active={{ bg: "whiteAlpha.400" }}
             >
               Utenti
             </Button>
@@ -283,7 +286,9 @@ export default function DashboardAdmin() {
               leftIcon={<FiFolder />} 
               onClick={() => navigate("/categorie")}
               color="white"
-              _hover={{ bg: "whiteAlpha.300" }}
+              fontWeight="semibold"
+              _hover={{ bg: "whiteAlpha.300", transform: "translateY(-1px)" }}
+              _active={{ bg: "whiteAlpha.400" }}
             >
               Categorie
             </Button>
@@ -292,7 +297,9 @@ export default function DashboardAdmin() {
               leftIcon={<FiBriefcase />} 
               onClick={() => navigate("/clienti")}
               color="white"
-              _hover={{ bg: "whiteAlpha.300" }}
+              fontWeight="semibold"
+              _hover={{ bg: "whiteAlpha.300", transform: "translateY(-1px)" }}
+              _active={{ bg: "whiteAlpha.400" }}
             >
               Clienti
             </Button>
@@ -301,7 +308,9 @@ export default function DashboardAdmin() {
               leftIcon={<FiFileText />} 
               onClick={esportaCSV}
               color="white"
-              _hover={{ bg: "whiteAlpha.300" }}
+              fontWeight="semibold"
+              _hover={{ bg: "whiteAlpha.300", transform: "translateY(-1px)" }}
+              _active={{ bg: "whiteAlpha.400" }}
             >
               CSV
             </Button>
@@ -311,8 +320,10 @@ export default function DashboardAdmin() {
               onClick={logout} 
               variant="outline"
               color="white"
-              borderColor="whiteAlpha.500"
-              _hover={{ bg: "whiteAlpha.200" }}
+              borderColor="white"
+              borderWidth="2px"
+              fontWeight="semibold"
+              _hover={{ bg: "white", color: "blue.600" }}
             >
               Logout
             </Button>
@@ -321,83 +332,141 @@ export default function DashboardAdmin() {
       </Box>
 
       <Box p={6}>
-        {/* PRIMA RIGA: Card rettangolari per gestione */}
-        <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6} mb={8}>
-          {[
-            { 
-              icon: FiUsers, 
-              label: "Gestione Utenti", 
-              description: "Gestisci gestione utenti del sistema", 
-              color: "blue", 
-              path: "/utenti" 
-            },
-            { 
-              icon: FiFolder, 
-              label: "Categorie", 
-              description: "Gestisci categorie del sistema", 
-              color: "purple", 
-              path: "/categorie" 
-            },
-            { 
-              icon: FiBriefcase, 
-              label: "Clienti", 
-              description: "Gestisci clienti del sistema", 
-              color: "teal", 
-              path: "/clienti" 
-            },
-          ].map((item, index) => (
-            <ScaleFade key={item.label} in={!isLoading} initialScale={0.9} delay={0.1 * index}>
-              <Card 
-                bg={cardBg} 
-                shadow="md" 
-                border="1px" 
-                borderColor={borderColor}
-                _hover={{ 
-                  shadow: "lg", 
-                  transform: "translateY(-3px)",
-                  animation: `${pulseAnimation} 0.5s ease-in-out`
-                }}
-                transition="all 0.3s"
-                cursor="pointer"
-                onClick={() => navigate(item.path)}
-                minH="120px" // Più rettangolare
-              >
-                <CardBody>
-                  <HStack spacing={4} align="start">
-                    <Icon as={item.icon} boxSize={8} color={`${item.color}.500`} mt={1} />
-                    <Box flex={1}>
-                      <Text fontWeight="bold" color="gray.800" fontSize="lg" mb={1}>
-                        {item.label}
-                      </Text>
-                      <Text fontSize="sm" color="gray.600" lineHeight="1.4">
-                        {item.description}
-                      </Text>
-                    </Box>
-                  </HStack>
-                </CardBody>
-              </Card>
-            </ScaleFade>
-          ))}
-        </SimpleGrid>
+        {/* PRIMA RIGA: Card gestione + Contatore segnalazioni */}
+        <SimpleGrid columns={{ base: 1, md: 4 }} spacing={6} mb={8}>
+          {/* Card Gestione Utenti */}
+          <ScaleFade in={!isLoading} initialScale={0.9}>
+            <Card 
+              bg={cardBg} 
+              shadow="md" 
+              border="1px" 
+              borderColor={borderColor}
+              _hover={{ 
+                shadow: "lg", 
+                transform: "translateY(-3px)",
+                animation: `${pulseAnimation} 0.5s ease-in-out`
+              }}
+              transition="all 0.3s"
+              cursor="pointer"
+              onClick={() => navigate("/utenti")}
+              minH="120px"
+            >
+              <CardBody>
+                <HStack spacing={4} align="start">
+                  <Icon as={FiUsers} boxSize={8} color="blue.500" mt={1} />
+                  <Box flex={1}>
+                    <Text fontWeight="bold" color="gray.800" fontSize="lg" mb={1}>
+                      Gestione Utenti
+                    </Text>
+                    <Text fontSize="sm" color="gray.600" lineHeight="1.4">
+                      Gestisci gestione utenti del sistema
+                    </Text>
+                  </Box>
+                </HStack>
+              </CardBody>
+            </Card>
+          </ScaleFade>
 
-        {/* Contatore Segnalazioni */}
-        <Card bg={cardBg} shadow="sm" border="1px" borderColor={borderColor} mb={6}>
-          <CardBody py={3}>
-            <HStack justify="space-between">
-              <Text fontSize="xl" fontWeight="bold" color="gray.700">
-                {segnalazioniFiltrate.length} Segnalazioni
-              </Text>
-              <Button
-                colorScheme="blue"
-                leftIcon={<FiDownload />}
-                onClick={esportaCSV}
-                size="sm"
-              >
-                Esporta CSV
-              </Button>
-            </HStack>
-          </CardBody>
-        </Card>
+          {/* Card Categorie */}
+          <ScaleFade in={!isLoading} initialScale={0.9} delay={0.1}>
+            <Card 
+              bg={cardBg} 
+              shadow="md" 
+              border="1px" 
+              borderColor={borderColor}
+              _hover={{ 
+                shadow: "lg", 
+                transform: "translateY(-3px)",
+                animation: `${pulseAnimation} 0.5s ease-in-out`
+              }}
+              transition="all 0.3s"
+              cursor="pointer"
+              onClick={() => navigate("/categorie")}
+              minH="120px"
+            >
+              <CardBody>
+                <HStack spacing={4} align="start">
+                  <Icon as={FiFolder} boxSize={8} color="purple.500" mt={1} />
+                  <Box flex={1}>
+                    <Text fontWeight="bold" color="gray.800" fontSize="lg" mb={1}>
+                      Categorie
+                    </Text>
+                    <Text fontSize="sm" color="gray.600" lineHeight="1.4">
+                      Gestisci categorie del sistema
+                    </Text>
+                  </Box>
+                </HStack>
+              </CardBody>
+            </Card>
+          </ScaleFade>
+
+          {/* Card Clienti */}
+          <ScaleFade in={!isLoading} initialScale={0.9} delay={0.2}>
+            <Card 
+              bg={cardBg} 
+              shadow="md" 
+              border="1px" 
+              borderColor={borderColor}
+              _hover={{ 
+                shadow: "lg", 
+                transform: "translateY(-3px)",
+                animation: `${pulseAnimation} 0.5s ease-in-out`
+              }}
+              transition="all 0.3s"
+              cursor="pointer"
+              onClick={() => navigate("/clienti")}
+              minH="120px"
+            >
+              <CardBody>
+                <HStack spacing={4} align="start">
+                  <Icon as={FiBriefcase} boxSize={8} color="teal.500" mt={1} />
+                  <Box flex={1}>
+                    <Text fontWeight="bold" color="gray.800" fontSize="lg" mb={1}>
+                      Clienti
+                    </Text>
+                    <Text fontSize="sm" color="gray.600" lineHeight="1.4">
+                      Gestisci clienti del sistema
+                    </Text>
+                  </Box>
+                </HStack>
+              </CardBody>
+            </Card>
+          </ScaleFade>
+
+          {/* Card Contatore Segnalazioni */}
+          <ScaleFade in={!isLoading} initialScale={0.9} delay={0.3}>
+            <Card 
+              bg={cardBg} 
+              shadow="md" 
+              border="1px" 
+              borderColor={borderColor}
+              _hover={{ shadow: "lg", transform: "translateY(-2px)" }}
+              transition="all 0.3s"
+              minH="120px"
+            >
+              <CardBody>
+                <VStack spacing={3} align="center" justify="center" height="100%">
+                  <Icon as={FiBarChart2} boxSize={8} color="green.500" />
+                  <Text fontSize="3xl" fontWeight="bold" color="gray.800">
+                    {segnalazioniFiltrate.length}
+                  </Text>
+                  <Text fontSize="lg" fontWeight="medium" color="gray.600" textAlign="center">
+                    Segnalazioni
+                  </Text>
+                  <Button
+                    colorScheme="green"
+                    leftIcon={<FiDownload />}
+                    onClick={esportaCSV}
+                    size="sm"
+                    width="full"
+                  >
+                    Esporta CSV
+                  </Button>
+                </VStack>
+              </CardBody>
+            </Card>
+          </ScaleFade>
+        </SimpleGrid>
 
         {/* Filtri e Ricerca */}
         <Card bg={cardBg} shadow="md" border="1px" borderColor={borderColor} mb={6}>
@@ -500,7 +569,7 @@ export default function DashboardAdmin() {
           </CardBody>
         </Card>
 
-        {/* Tabella Segnalazioni - COLONNE RIDOTTE */}
+        {/* Tabella Segnalazioni */}
         <Card bg={cardBg} shadow="lg" border="1px" borderColor={borderColor}>
           <CardHeader pb={0}>
             <Flex justify="space-between" align="center">
