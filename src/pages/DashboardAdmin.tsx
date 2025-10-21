@@ -74,6 +74,15 @@ type Segnalazione = {
 type Categoria = { id: number; nome_categoria: string };
 type Cliente = { id: number; nome_sala: string };
 
+type FiltroTemporale = 
+  | "tutti"
+  | "oggi" 
+  | "ultimi-7-giorni" 
+  | "ultimi-30-giorni" 
+  | "questo-mese" 
+  | "mese-scorso" 
+  | "personalizzato";
+
 const pulseAnimation = keyframes`
   0% { transform: scale(1); }
   50% { transform: scale(1.05); }
@@ -86,7 +95,11 @@ export default function DashboardAdmin() {
   const [categorie, setCategorie] = useState<Categoria[]>([]);
   const [clienti, setClienti] = useState<Cliente[]>([]);
   const [utenti, setUtenti] = useState<any[]>([]);
-  const [filtroData, setFiltroData] = useState("");
+  
+  // Stati per i filtri
+  const [filtroTemporale, setFiltroTemporale] = useState<FiltroTemporale>("tutti");
+  const [dataInizio, setDataInizio] = useState("");
+  const [dataFine, setDataFine] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("");
   const [filtroCliente, setFiltroCliente] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -143,15 +156,72 @@ export default function DashboardAdmin() {
     loadData();
   }, []);
 
+  // Calcola le date in base al filtro temporale
+  useEffect(() => {
+    const oggi = new Date();
+    let inizio: Date, fine: Date;
+
+    switch (filtroTemporale) {
+      case "oggi":
+        inizio = new Date(oggi);
+        fine = new Date(oggi);
+        break;
+      
+      case "ultimi-7-giorni":
+        inizio = new Date(oggi);
+        inizio.setDate(oggi.getDate() - 7);
+        fine = new Date(oggi);
+        break;
+      
+      case "ultimi-30-giorni":
+        inizio = new Date(oggi);
+        inizio.setDate(oggi.getDate() - 30);
+        fine = new Date(oggi);
+        break;
+      
+      case "questo-mese":
+        inizio = new Date(oggi.getFullYear(), oggi.getMonth(), 1);
+        fine = new Date(oggi.getFullYear(), oggi.getMonth() + 1, 0);
+        break;
+      
+      case "mese-scorso":
+        inizio = new Date(oggi.getFullYear(), oggi.getMonth() - 1, 1);
+        fine = new Date(oggi.getFullYear(), oggi.getMonth(), 0);
+        break;
+      
+      case "personalizzato":
+        // L'utente imposterà manualmente dataInizio e dataFine
+        return;
+      
+      case "tutti":
+      default:
+        setDataInizio("");
+        setDataFine("");
+        return;
+    }
+
+    setDataInizio(inizio.toISOString().split('T')[0]);
+    setDataFine(fine.toISOString().split('T')[0]);
+  }, [filtroTemporale]);
+
   // Statistiche calcolate
   const segnalazioniAperte = segnalazioni.filter(s => s.stato === "aperta").length;
   const segnalazioniInLavorazione = segnalazioni.filter(s => s.stato === "in_lavorazione").length;
   const segnalazioniRisolte = segnalazioni.filter(s => s.stato === "risolta").length;
   const segnalazioniUrgenti = segnalazioni.filter(s => s.priorita === "alta").length;
 
-  // Filtri
+  // Filtri combinati
   const segnalazioniFiltrate = segnalazioni.filter((s) => {
-    const dataMatch = filtroData ? s.data.startsWith(filtroData) : true;
+    // Filtro temporale
+    const dataSegnalazione = new Date(s.data);
+    const dataInizioFilter = dataInizio ? new Date(dataInizio) : null;
+    const dataFineFilter = dataFine ? new Date(dataFine) : null;
+    
+    const dataMatch = 
+      (!dataInizioFilter || dataSegnalazione >= dataInizioFilter) &&
+      (!dataFineFilter || dataSegnalazione <= dataFineFilter);
+    
+    // Altri filtri
     const catMatch = filtroCategoria ? s.categoria === filtroCategoria : true;
     const cliMatch = filtroCliente ? s.sala === filtroCliente : true;
     const searchMatch = searchTerm ? 
@@ -187,7 +257,11 @@ export default function DashboardAdmin() {
     const csvContent = "data:text/csv;charset=utf-8," + [header, ...rows].map((e) => e.join(";")).join("\n");
     const link = document.createElement("a");
     link.setAttribute("href", encodeURI(csvContent));
-    link.setAttribute("download", `segnalazioni_${new Date().toISOString().split('T')[0]}.csv`);
+    
+    // Nome file con info sul periodo
+    const periodo = filtroTemporale !== "tutti" ? filtroTemporale : "completo";
+    link.setAttribute("download", `segnalazioni_${periodo}_${new Date().toISOString().split('T')[0]}.csv`);
+    
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -250,15 +324,15 @@ export default function DashboardAdmin() {
             </Box>
           </HStack>
 
-          {/* Pulsanti originali - MANTENUTI COME PRIMA */}
+          {/* Pulsanti originali */}
           <HStack spacing={3}>
-            <Button colorScheme="whiteAlpha" leftIcon={<FiUsers />} onClick={() => nav("/utenti")}>
+            <Button colorScheme="whiteAlpha" leftIcon={<FiUsers />} onClick={() => navigate("/utenti")}>
               Utenti
             </Button>
-            <Button colorScheme="whiteAlpha" leftIcon={<FiFolder />} onClick={() => nav("/categorie")}>
+            <Button colorScheme="whiteAlpha" leftIcon={<FiFolder />} onClick={() => navigate("/categorie")}>
               Categorie
             </Button>
-            <Button colorScheme="whiteAlpha" leftIcon={<FiBriefcase />} onClick={() => nav("/clienti")}>
+            <Button colorScheme="whiteAlpha" leftIcon={<FiBriefcase />} onClick={() => navigate("/clienti")}>
               Clienti
             </Button>
             <Button colorScheme="whiteAlpha" leftIcon={<FiFileText />} onClick={esportaCSV}>
@@ -272,7 +346,7 @@ export default function DashboardAdmin() {
       </Box>
 
       <Box p={6}>
-        {/* KPI Cards - Solo miglioramento grafico */}
+        {/* KPI Cards */}
         <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={6} mb={8}>
           <ScaleFade in={!isLoading} initialScale={0.9}>
             <Card 
@@ -290,15 +364,21 @@ export default function DashboardAdmin() {
                     Totale Segnalazioni
                   </StatLabel>
                   <StatNumber color="blue.600" fontSize="3xl">
-                    {segnalazioni.length}
+                    {segnalazioniFiltrate.length}
                   </StatNumber>
                   <StatHelpText>
                     <Text color="green.500" display="flex" alignItems="center" gap={1}>
-                      <FiTrendingUp /> +12% dal mese scorso
+                      <FiTrendingUp /> Filtrate
                     </Text>
                   </StatHelpText>
                 </Stat>
-                <Progress value={75} colorScheme="blue" mt={2} size="sm" borderRadius="full" />
+                <Progress 
+                  value={(segnalazioniFiltrate.length / segnalazioni.length) * 100} 
+                  colorScheme="blue" 
+                  mt={2} 
+                  size="sm" 
+                  borderRadius="full" 
+                />
               </CardBody>
             </Card>
           </ScaleFade>
@@ -322,7 +402,7 @@ export default function DashboardAdmin() {
                     {segnalazioniAperte}
                   </StatNumber>
                   <StatHelpText>
-                    {segnalazioniUrgenti} richiedono attenzione urgente
+                    {segnalazioniUrgenti} urgenti
                   </StatHelpText>
                 </Stat>
                 <Progress 
@@ -355,7 +435,7 @@ export default function DashboardAdmin() {
                     {segnalazioniInLavorazione}
                   </StatNumber>
                   <StatHelpText>
-                    Tempo medio risoluzione: 2.3 giorni
+                    In corso
                   </StatHelpText>
                 </Stat>
                 <Progress 
@@ -388,7 +468,7 @@ export default function DashboardAdmin() {
                     {segnalazioniRisolte}
                   </StatNumber>
                   <StatHelpText>
-                    Tasso di successo: 94%
+                    Completate
                   </StatHelpText>
                 </Stat>
                 <Progress 
@@ -403,7 +483,7 @@ export default function DashboardAdmin() {
           </ScaleFade>
         </SimpleGrid>
 
-        {/* Quick Access Cards - Solo miglioramento grafico */}
+        {/* Quick Access Cards */}
         <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6} mb={8}>
           {[
             { icon: FiUsers, label: "Gestione Utenti", count: utenti.length, color: "blue", path: "/utenti" },
@@ -446,7 +526,7 @@ export default function DashboardAdmin() {
           ))}
         </SimpleGrid>
 
-        {/* Filtri e Ricerca - Solo miglioramento grafico */}
+        {/* Filtri e Ricerca */}
         <Card bg={cardBg} shadow="md" border="1px" borderColor={borderColor} mb={6}>
           <CardBody>
             <VStack spacing={4} align="stretch">
@@ -455,6 +535,50 @@ export default function DashboardAdmin() {
               </Heading>
               
               <HStack spacing={4} flexWrap="wrap">
+                {/* Filtro Temporale */}
+                <Select
+                  placeholder="Periodo temporale"
+                  value={filtroTemporale}
+                  onChange={(e) => setFiltroTemporale(e.target.value as FiltroTemporale)}
+                  maxW="250px"
+                >
+                  <option value="tutti">Tutti i periodi</option>
+                  <option value="oggi">Oggi</option>
+                  <option value="ultimi-7-giorni">Ultimi 7 giorni</option>
+                  <option value="ultimi-30-giorni">Ultimi 30 giorni</option>
+                  <option value="questo-mese">Questo mese</option>
+                  <option value="mese-scorso">Mese scorso</option>
+                  <option value="personalizzato">Personalizzato</option>
+                </Select>
+
+                {/* Input date per personalizzato */}
+                {filtroTemporale === "personalizzato" && (
+                  <>
+                    <Input
+                      type="date"
+                      value={dataInizio}
+                      onChange={(e) => setDataInizio(e.target.value)}
+                      maxW="180px"
+                    />
+                    <Text color="gray.600">al</Text>
+                    <Input
+                      type="date"
+                      value={dataFine}
+                      onChange={(e) => setDataFine(e.target.value)}
+                      maxW="180px"
+                    />
+                  </>
+                )}
+
+                {/* Indicatore periodo selezionato */}
+                {(filtroTemporale !== "tutti" && filtroTemporale !== "personalizzato") && (
+                  <Badge colorScheme="blue" variant="subtle">
+                    {dataInizio && `Dal ${new Date(dataInizio).toLocaleDateString("it-IT")}`}
+                    {dataFine && ` al ${new Date(dataFine).toLocaleDateString("it-IT")}`}
+                  </Badge>
+                )}
+
+                {/* Search */}
                 <InputGroup maxW="300px">
                   <InputLeftElement pointerEvents="none">
                     <Icon as={FiSearch} color="gray.400" />
@@ -477,13 +601,7 @@ export default function DashboardAdmin() {
                   )}
                 </InputGroup>
 
-                <Input
-                  type="date"
-                  value={filtroData}
-                  onChange={(e) => setFiltroData(e.target.value)}
-                  maxW="200px"
-                />
-                
+                {/* Filtri categoria e cliente */}
                 <Select
                   placeholder="Tutte le categorie"
                   value={filtroCategoria}
@@ -514,7 +632,9 @@ export default function DashboardAdmin() {
                   leftIcon={<FiFilter />}
                   variant="outline"
                   onClick={() => {
-                    setFiltroData("");
+                    setFiltroTemporale("tutti");
+                    setDataInizio("");
+                    setDataFine("");
                     setFiltroCategoria("");
                     setFiltroCliente("");
                     setSearchTerm("");
@@ -527,12 +647,17 @@ export default function DashboardAdmin() {
           </CardBody>
         </Card>
 
-        {/* Tabella Segnalazioni - Solo miglioramento grafico */}
+        {/* Tabella Segnalazioni */}
         <Card bg={cardBg} shadow="lg" border="1px" borderColor={borderColor}>
           <CardHeader pb={0}>
             <Flex justify="space-between" align="center">
               <Heading size="md" color="gray.700">
                 Segnalazioni
+                {filtroTemporale !== "tutti" && (
+                  <Badge ml={2} colorScheme="blue">
+                    {filtroTemporale}
+                  </Badge>
+                )}
               </Heading>
               <Text color="gray.500" fontSize="sm">
                 {segnalazioniFiltrate.length} risultati
@@ -599,7 +724,7 @@ export default function DashboardAdmin() {
                 <Icon as={FiFilter} boxSize={8} />
                 <Text>Nessuna segnalazione trovata con i filtri attuali</Text>
                 <Button variant="link" onClick={() => {
-                  setFiltroData("");
+                  setFiltroTemporale("tutti");
                   setFiltroCategoria("");
                   setFiltroCliente("");
                   setSearchTerm("");
