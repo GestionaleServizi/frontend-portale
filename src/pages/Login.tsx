@@ -63,7 +63,7 @@ export default function Login() {
         <VStack spacing={4}>
           <Image src={logo} alt="Logo" boxSize="120px" mb={2} />
           <Heading size="lg" color="blue.700">
-            Accedi al Portale
+            Accedi al Portale Staging
           </Heading>
           <Divider mb={2} />
           <FormControl>
