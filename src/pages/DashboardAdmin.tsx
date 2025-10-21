@@ -24,16 +24,9 @@ import {
   CardBody,
   SimpleGrid,
   Icon,
-  Stat,
-  StatLabel,
-  StatNumber,
-  StatHelpText,
-  Progress,
-  Badge,
   IconButton,
   InputGroup,
   InputLeftElement,
-  InputRightElement,
   Tooltip,
   useColorModeValue,
   keyframes,
@@ -49,15 +42,7 @@ import {
   FiCalendar,
   FiFilter,
   FiDownload,
-  FiPlus,
   FiSearch,
-  FiTrendingUp,
-  FiEye,
-  FiMoreVertical,
-  FiClock,
-  FiCheckCircle,
-  FiAlertCircle,
-  FiBarChart2,
 } from "react-icons/fi";
 
 type Segnalazione = {
@@ -67,8 +52,6 @@ type Segnalazione = {
   descrizione: string;
   categoria?: string;
   sala?: string;
-  priorita?: "alta" | "media" | "bassa";
-  stato?: "aperta" | "in_lavorazione" | "risolta";
 };
 
 type Categoria = { id: number; nome_categoria: string };
@@ -190,7 +173,6 @@ export default function DashboardAdmin() {
         break;
       
       case "personalizzato":
-        // L'utente imposterà manualmente dataInizio e dataFine
         return;
       
       case "tutti":
@@ -203,12 +185,6 @@ export default function DashboardAdmin() {
     setDataInizio(inizio.toISOString().split('T')[0]);
     setDataFine(fine.toISOString().split('T')[0]);
   }, [filtroTemporale]);
-
-  // Statistiche calcolate
-  const segnalazioniAperte = segnalazioni.filter(s => s.stato === "aperta").length;
-  const segnalazioniInLavorazione = segnalazioni.filter(s => s.stato === "in_lavorazione").length;
-  const segnalazioniRisolte = segnalazioni.filter(s => s.stato === "risolta").length;
-  const segnalazioniUrgenti = segnalazioni.filter(s => s.priorita === "alta").length;
 
   // Filtri combinati
   const segnalazioniFiltrate = segnalazioni.filter((s) => {
@@ -242,7 +218,7 @@ export default function DashboardAdmin() {
       return;
     }
 
-    const header = ["ID", "Data", "Ora", "Categoria", "Sala", "Descrizione", "Priorità", "Stato"];
+    const header = ["ID", "Data", "Ora", "Categoria", "Sala", "Descrizione"];
     const rows = segnalazioniFiltrate.map((s) => [
       s.id,
       new Date(s.data).toLocaleDateString("it-IT"),
@@ -250,18 +226,12 @@ export default function DashboardAdmin() {
       s.categoria || "",
       s.sala || "",
       s.descrizione || "",
-      s.priorita || "",
-      s.stato || "",
     ]);
     
     const csvContent = "data:text/csv;charset=utf-8," + [header, ...rows].map((e) => e.join(";")).join("\n");
     const link = document.createElement("a");
     link.setAttribute("href", encodeURI(csvContent));
-    
-    // Nome file con info sul periodo
-    const periodo = filtroTemporale !== "tutti" ? filtroTemporale : "completo";
-    link.setAttribute("download", `segnalazioni_${periodo}_${new Date().toISOString().split('T')[0]}.csv`);
-    
+    link.setAttribute("download", `segnalazioni_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -274,36 +244,9 @@ export default function DashboardAdmin() {
     });
   };
 
-  const getPriorityColor = (priorita?: string) => {
-    switch (priorita) {
-      case "alta": return "red";
-      case "media": return "orange";
-      case "bassa": return "green";
-      default: return "gray";
-    }
-  };
-
-  const getStatusColor = (stato?: string) => {
-    switch (stato) {
-      case "aperta": return "blue";
-      case "in_lavorazione": return "purple";
-      case "risolta": return "green";
-      default: return "gray";
-    }
-  };
-
-  const getStatusIcon = (stato?: string) => {
-    switch (stato) {
-      case "aperta": return FiAlertCircle;
-      case "in_lavorazione": return FiClock;
-      case "risolta": return FiCheckCircle;
-      default: return FiEye;
-    }
-  };
-
   return (
     <Box minH="100vh" bg="gray.50" position="relative">
-      {/* Header - CAMBIATO COLORE TESTO */}
+      {/* Header - TESTO PIÙ LEGGIBILE */}
       <Box bg={bgGradient} px={6} py={4} shadow="lg">
         <Flex align="center" justify="space-between">
           <HStack spacing={4}>
@@ -318,27 +261,59 @@ export default function DashboardAdmin() {
               <Heading size="lg" color="white" fontWeight="bold">
                 Dashboard Amministratore
               </Heading>
-              <Text color="whiteAlpha.900" fontSize="sm" fontWeight="medium"> {/* CAMBIATO COLORE */}
+              <Text color="white" fontSize="sm" fontWeight="medium" opacity={0.9}>
                 Gestione completa del sistema
               </Text>
             </Box>
           </HStack>
 
-          {/* Pulsanti originali */}
+          {/* Pulsanti header - TESTO PIÙ LEGGIBILE */}
           <HStack spacing={3}>
-            <Button colorScheme="whiteAlpha" leftIcon={<FiUsers />} onClick={() => navigate("/utenti")}>
+            <Button 
+              colorScheme="whiteAlpha" 
+              leftIcon={<FiUsers />} 
+              onClick={() => navigate("/utenti")}
+              color="white"
+              _hover={{ bg: "whiteAlpha.300" }}
+            >
               Utenti
             </Button>
-            <Button colorScheme="whiteAlpha" leftIcon={<FiFolder />} onClick={() => navigate("/categorie")}>
+            <Button 
+              colorScheme="whiteAlpha" 
+              leftIcon={<FiFolder />} 
+              onClick={() => navigate("/categorie")}
+              color="white"
+              _hover={{ bg: "whiteAlpha.300" }}
+            >
               Categorie
             </Button>
-            <Button colorScheme="whiteAlpha" leftIcon={<FiBriefcase />} onClick={() => navigate("/clienti")}>
+            <Button 
+              colorScheme="whiteAlpha" 
+              leftIcon={<FiBriefcase />} 
+              onClick={() => navigate("/clienti")}
+              color="white"
+              _hover={{ bg: "whiteAlpha.300" }}
+            >
               Clienti
             </Button>
-            <Button colorScheme="whiteAlpha" leftIcon={<FiFileText />} onClick={esportaCSV}>
+            <Button 
+              colorScheme="whiteAlpha" 
+              leftIcon={<FiFileText />} 
+              onClick={esportaCSV}
+              color="white"
+              _hover={{ bg: "whiteAlpha.300" }}
+            >
               CSV
             </Button>
-            <Button colorScheme="whiteAlpha" leftIcon={<FiLogOut />} onClick={logout} variant="outline">
+            <Button 
+              colorScheme="whiteAlpha" 
+              leftIcon={<FiLogOut />} 
+              onClick={logout} 
+              variant="outline"
+              color="white"
+              borderColor="whiteAlpha.500"
+              _hover={{ bg: "whiteAlpha.200" }}
+            >
               Logout
             </Button>
           </HStack>
@@ -346,77 +321,30 @@ export default function DashboardAdmin() {
       </Box>
 
       <Box p={6}>
-        {/* PRIMA RIGA: Statistiche segnalazioni + Quick Access Cards */}
-        <SimpleGrid columns={{ base: 1, md: 2, lg: 6 }} spacing={6} mb={8}>
-          {/* Statistiche Segnalazioni */}
-          <ScaleFade in={!isLoading} initialScale={0.9}>
-            <Card 
-              bg={cardBg} 
-              shadow="lg" 
-              border="1px" 
-              borderColor={borderColor}
-              _hover={{ shadow: "xl", transform: "translateY(-2px)" }}
-              transition="all 0.3s"
-              gridColumn={{ base: "1", md: "span 2" }}
-            >
-              <CardBody>
-                <VStack spacing={4} align="stretch">
-                  <HStack justify="space-between">
-                    <Stat>
-                      <StatLabel display="flex" alignItems="center" gap={2} color="gray.600">
-                        <Icon as={FiBarChart2} color="blue.500" />
-                        Segnalazioni Filtrate
-                      </StatLabel>
-                      <StatNumber color="blue.600" fontSize="4xl">
-                        {segnalazioniFiltrate.length}
-                      </StatNumber>
-                    </Stat>
-                  </HStack>
-                  <SimpleGrid columns={3} spacing={4}>
-                    <Box textAlign="center">
-                      <Text fontSize="2xl" fontWeight="bold" color="red.500">
-                        {segnalazioniAperte}
-                      </Text>
-                      <Text fontSize="sm" color="gray.600">
-                        Aperte
-                      </Text>
-                      <Text fontSize="xs" color="gray.500">
-                        {segnalazioniUrgenti} urgenti
-                      </Text>
-                    </Box>
-                    <Box textAlign="center">
-                      <Text fontSize="2xl" fontWeight="bold" color="purple.500">
-                        {segnalazioniInLavorazione}
-                      </Text>
-                      <Text fontSize="sm" color="gray.600">
-                        In Lavorazione
-                      </Text>
-                      <Text fontSize="xs" color="gray.500">
-                        In corso
-                      </Text>
-                    </Box>
-                    <Box textAlign="center">
-                      <Text fontSize="2xl" fontWeight="bold" color="green.500">
-                        {segnalazioniRisolte}
-                      </Text>
-                      <Text fontSize="sm" color="gray.600">
-                        Risolte
-                      </Text>
-                      <Text fontSize="xs" color="gray.500">
-                        Completate
-                      </Text>
-                    </Box>
-                  </SimpleGrid>
-                </VStack>
-              </CardBody>
-            </Card>
-          </ScaleFade>
-
-          {/* Quick Access Cards - SPOSTATE IN ALTO */}
+        {/* PRIMA RIGA: Card rettangolari per gestione */}
+        <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6} mb={8}>
           {[
-            { icon: FiUsers, label: "Gestione Utenti", count: utenti.length, color: "blue", path: "/utenti" },
-            { icon: FiFolder, label: "Categorie", count: categorie.length, color: "purple", path: "/categorie" },
-            { icon: FiBriefcase, label: "Clienti", count: clienti.length, color: "teal", path: "/clienti" },
+            { 
+              icon: FiUsers, 
+              label: "Gestione Utenti", 
+              description: "Gestisci gestione utenti del sistema", 
+              color: "blue", 
+              path: "/utenti" 
+            },
+            { 
+              icon: FiFolder, 
+              label: "Categorie", 
+              description: "Gestisci categorie del sistema", 
+              color: "purple", 
+              path: "/categorie" 
+            },
+            { 
+              icon: FiBriefcase, 
+              label: "Clienti", 
+              description: "Gestisci clienti del sistema", 
+              color: "teal", 
+              path: "/clienti" 
+            },
           ].map((item, index) => (
             <ScaleFade key={item.label} in={!isLoading} initialScale={0.9} delay={0.1 * index}>
               <Card 
@@ -432,25 +360,44 @@ export default function DashboardAdmin() {
                 transition="all 0.3s"
                 cursor="pointer"
                 onClick={() => navigate(item.path)}
+                minH="120px" // Più rettangolare
               >
                 <CardBody>
-                  <VStack spacing={3} align="stretch" textAlign="center">
-                    <Icon as={item.icon} boxSize={8} color={`${item.color}.500`} mx="auto" />
-                    <Badge colorScheme={item.color} variant="subtle" width="fit-content" mx="auto">
-                      {item.count}
-                    </Badge>
-                    <Text fontWeight="semibold" color="gray.700">
-                      {item.label}
-                    </Text>
-                    <Text fontSize="sm" color="gray.500">
-                      Gestisci {item.label.toLowerCase()} del sistema
-                    </Text>
-                  </VStack>
+                  <HStack spacing={4} align="start">
+                    <Icon as={item.icon} boxSize={8} color={`${item.color}.500`} mt={1} />
+                    <Box flex={1}>
+                      <Text fontWeight="bold" color="gray.800" fontSize="lg" mb={1}>
+                        {item.label}
+                      </Text>
+                      <Text fontSize="sm" color="gray.600" lineHeight="1.4">
+                        {item.description}
+                      </Text>
+                    </Box>
+                  </HStack>
                 </CardBody>
               </Card>
             </ScaleFade>
           ))}
         </SimpleGrid>
+
+        {/* Contatore Segnalazioni */}
+        <Card bg={cardBg} shadow="sm" border="1px" borderColor={borderColor} mb={6}>
+          <CardBody py={3}>
+            <HStack justify="space-between">
+              <Text fontSize="xl" fontWeight="bold" color="gray.700">
+                {segnalazioniFiltrate.length} Segnalazioni
+              </Text>
+              <Button
+                colorScheme="blue"
+                leftIcon={<FiDownload />}
+                onClick={esportaCSV}
+                size="sm"
+              >
+                Esporta CSV
+              </Button>
+            </HStack>
+          </CardBody>
+        </Card>
 
         {/* Filtri e Ricerca */}
         <Card bg={cardBg} shadow="md" border="1px" borderColor={borderColor} mb={6}>
@@ -553,21 +500,13 @@ export default function DashboardAdmin() {
           </CardBody>
         </Card>
 
-        {/* Tabella Segnalazioni */}
+        {/* Tabella Segnalazioni - COLONNE RIDOTTE */}
         <Card bg={cardBg} shadow="lg" border="1px" borderColor={borderColor}>
           <CardHeader pb={0}>
             <Flex justify="space-between" align="center">
               <Heading size="md" color="gray.700">
                 Segnalazioni
-                {filtroTemporale !== "tutti" && (
-                  <Badge ml={2} colorScheme="blue">
-                    {filtroTemporale}
-                  </Badge>
-                )}
               </Heading>
-              <Text color="gray.500" fontSize="sm">
-                {segnalazioniFiltrate.length} risultati
-              </Text>
             </Flex>
           </CardHeader>
           <CardBody>
@@ -575,13 +514,11 @@ export default function DashboardAdmin() {
               <Table variant="simple">
                 <Thead bg="gray.50">
                   <Tr>
-                    <Th>Data</Th>
-                    <Th>Ora</Th>
-                    <Th>Categoria</Th>
-                    <Th>Sala</Th>
-                    <Th>Descrizione</Th>
-                    <Th>Priorità</Th>
-                    <Th>Stato</Th>
+                    <Th>DATA</Th>
+                    <Th>ORA</Th>
+                    <Th>CATEGORIA</Th>
+                    <Th>SALA</Th>
+                    <Th>DESCRIZIONE</Th>
                   </Tr>
                 </Thead>
                 <Tbody>
@@ -593,31 +530,14 @@ export default function DashboardAdmin() {
                     >
                       <Td>{new Date(s.data).toLocaleDateString("it-IT")}</Td>
                       <Td>{s.ora}</Td>
-                      <Td>
-                        <Badge colorScheme="blue" variant="subtle">
-                          {s.categoria}
-                        </Badge>
-                      </Td>
-                      <Td fontWeight="medium">{s.sala}</Td>
-                      <Td maxW="300px">
+                      <Td>{s.categoria || "N/A"}</Td>
+                      <Td>{s.sala || "N/A"}</Td>
+                      <Td maxW="400px">
                         <Tooltip label={s.descrizione}>
                           <Text noOfLines={2} fontSize="sm">
                             {s.descrizione}
                           </Text>
                         </Tooltip>
-                      </Td>
-                      <Td>
-                        <Badge colorScheme={getPriorityColor(s.priorita)}>
-                          {s.priorita || "N/A"}
-                        </Badge>
-                      </Td>
-                      <Td>
-                        <HStack spacing={2}>
-                          <Icon as={getStatusIcon(s.stato)} color={`${getStatusColor(s.stato)}.500`} />
-                          <Badge colorScheme={getStatusColor(s.stato)}>
-                            {s.stato || "N/A"}
-                          </Badge>
-                        </HStack>
                       </Td>
                     </Tr>
                   ))}
