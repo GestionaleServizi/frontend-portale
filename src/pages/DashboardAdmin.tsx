@@ -57,7 +57,6 @@ import {
   FiDownload,
   FiPlus,
   FiSearch,
-  FiBarChart3,
   FiTrendingUp,
   FiEye,
   FiMoreVertical,
@@ -66,6 +65,7 @@ import {
   FiAlertCircle,
   FiSettings,
   FiUser,
+  FiBarChart2, // Sostituito FiBarChart3 con FiBarChart2
 } from "react-icons/fi";
 import { 
   ChevronDownIcon, 
@@ -345,7 +345,7 @@ export default function DashboardAdmin() {
               <CardBody>
                 <Stat>
                   <StatLabel display="flex" alignItems="center" gap={2} color="gray.600">
-                    <Icon as={FiBarChart3} color="blue.500" />
+                    <Icon as={FiBarChart2} color="blue.500" /> {/* Cambiato qui */}
                     Totale Segnalazioni
                   </StatLabel>
                   <StatNumber color="blue.600" fontSize="3xl">
