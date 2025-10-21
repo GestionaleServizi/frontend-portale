@@ -18,9 +18,10 @@ import {
   Select,
   useToast,
   Image,
+  VStack,
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
-import { FiUsers, FiFolder, FiBriefcase, FiLogOut, FiFileText } from "react-icons/fi";
+import { FiUsers, FiFolder, FiBriefcase, FiLogOut, FiFileText, FiCalendar } from "react-icons/fi";
 
 type Segnalazione = {
   id: number;
@@ -34,15 +35,29 @@ type Segnalazione = {
 type Categoria = { id: number; nome_categoria: string };
 type Cliente = { id: number; nome_sala: string };
 
+type FiltroTemporale = 
+  | "oggi" 
+  | "ultimi-7-giorni" 
+  | "ultimi-30-giorni" 
+  | "questo-mese" 
+  | "mese-scorso" 
+  | "personalizzato" 
+  | "tutti";
+
 export default function DashboardAdmin() {
   const { token, logout } = useAuth();
   const [segnalazioni, setSegnalazioni] = useState<Segnalazione[]>([]);
   const [categorie, setCategorie] = useState<Categoria[]>([]);
   const [clienti, setClienti] = useState<Cliente[]>([]);
   const [utenti, setUtenti] = useState<any[]>([]);
-  const [filtroData, setFiltroData] = useState("");
+  
+  // Nuovi stati per i filtri
+  const [filtroTemporale, setFiltroTemporale] = useState<FiltroTemporale>("tutti");
+  const [dataInizio, setDataInizio] = useState("");
+  const [dataFine, setDataFine] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("");
   const [filtroCliente, setFiltroCliente] = useState("");
+  
   const toast = useToast();
   const nav = useNavigate();
 
@@ -77,15 +92,73 @@ export default function DashboardAdmin() {
     loadData();
   }, []);
 
-  // Filtri
+  // Calcola le date in base al filtro temporale
+  useEffect(() => {
+    const oggi = new Date();
+    let inizio: Date, fine: Date;
+
+    switch (filtroTemporale) {
+      case "oggi":
+        inizio = new Date(oggi);
+        fine = new Date(oggi);
+        break;
+      
+      case "ultimi-7-giorni":
+        inizio = new Date(oggi);
+        inizio.setDate(oggi.getDate() - 7);
+        fine = new Date(oggi);
+        break;
+      
+      case "ultimi-30-giorni":
+        inizio = new Date(oggi);
+        inizio.setDate(oggi.getDate() - 30);
+        fine = new Date(oggi);
+        break;
+      
+      case "questo-mese":
+        inizio = new Date(oggi.getFullYear(), oggi.getMonth(), 1);
+        fine = new Date(oggi.getFullYear(), oggi.getMonth() + 1, 0);
+        break;
+      
+      case "mese-scorso":
+        inizio = new Date(oggi.getFullYear(), oggi.getMonth() - 1, 1);
+        fine = new Date(oggi.getFullYear(), oggi.getMonth(), 0);
+        break;
+      
+      case "personalizzato":
+        // L'utente imposterà manualmente dataInizio e dataFine
+        return;
+      
+      case "tutti":
+      default:
+        setDataInizio("");
+        setDataFine("");
+        return;
+    }
+
+    setDataInizio(inizio.toISOString().split('T')[0]);
+    setDataFine(fine.toISOString().split('T')[0]);
+  }, [filtroTemporale]);
+
+  // Filtri combinati
   const segnalazioniFiltrate = segnalazioni.filter((s) => {
-    const dataMatch = filtroData ? s.data.startsWith(filtroData) : true;
+    // Filtro temporale
+    const dataSegnalazione = new Date(s.data);
+    const dataInizioFilter = dataInizio ? new Date(dataInizio) : null;
+    const dataFineFilter = dataFine ? new Date(dataFine) : null;
+    
+    const dataMatch = 
+      (!dataInizioFilter || dataSegnalazione >= dataInizioFilter) &&
+      (!dataFineFilter || dataSegnalazione <= dataFineFilter);
+    
+    // Altri filtri
     const catMatch = filtroCategoria ? s.categoria === filtroCategoria : true;
     const cliMatch = filtroCliente ? s.sala === filtroCliente : true;
+    
     return dataMatch && catMatch && cliMatch;
   });
 
-  // Esporta CSV
+  // Esporta CSV con i filtri applicati
   const esportaCSV = () => {
     const header = ["ID", "Data", "Ora", "Categoria", "Sala", "Descrizione"];
     const rows = segnalazioniFiltrate.map((s) => [
@@ -102,10 +175,27 @@ export default function DashboardAdmin() {
 
     const link = document.createElement("a");
     link.setAttribute("href", encodeURI(csvContent));
-    link.setAttribute("download", "segnalazioni.csv");
+    
+    // Nome file con info sui filtri
+    const nomeFile = `segnalazioni_${filtroTemporale}_${new Date().toISOString().split('T')[0]}.csv`;
+    link.setAttribute("download", nomeFile);
+    
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+
+    toast({
+      title: "CSV esportato",
+      description: `Esportate ${segnalazioniFiltrate.length} segnalazioni`,
+      status: "success",
+    });
+  };
+
+  // Reset filtri
+  const resetFiltri = () => {
+    setFiltroTemporale("tutti");
+    setFiltroCategoria("");
+    setFiltroCliente("");
   };
 
   return (
@@ -140,6 +230,9 @@ export default function DashboardAdmin() {
         <Box p={6} bg="white" borderRadius="md" shadow="sm" flex="1">
           <Text fontSize="sm">📊 Segnalazioni</Text>
           <Heading size="lg">{segnalazioniFiltrate.length}</Heading>
+          <Text fontSize="xs" color="gray.600">
+            {filtroTemporale !== "tutti" && `Filtro: ${filtroTemporale}`}
+          </Text>
         </Box>
         <Box p={6} bg="white" borderRadius="md" shadow="sm" flex="1">
           <Text fontSize="sm">🏢 Clienti</Text>
@@ -156,44 +249,83 @@ export default function DashboardAdmin() {
       </HStack>
 
       {/* Filtri */}
-      <HStack mb={4} spacing={4}>
-        <Input
-          type="date"
-          value={filtroData}
-          onChange={(e) => setFiltroData(e.target.value)}
-        />
-        <Select
-          placeholder="Tutte le categorie"
-          value={filtroCategoria}
-          onChange={(e) => setFiltroCategoria(e.target.value)}
-        >
-          {categorie.map((c) => (
-            <option key={c.id} value={c.nome_categoria}>
-              {c.nome_categoria}
-            </option>
-          ))}
-        </Select>
-        <Select
-          placeholder="Tutti i clienti"
-          value={filtroCliente}
-          onChange={(e) => setFiltroCliente(e.target.value)}
-        >
-          {clienti.map((c) => (
-            <option key={c.id} value={c.nome_sala}>
-              {c.nome_sala}
-            </option>
-          ))}
-        </Select>
-        <Button
-          onClick={() => {
-            setFiltroData("");
-            setFiltroCategoria("");
-            setFiltroCliente("");
-          }}
-        >
-          Reset Filtri
-        </Button>
-      </HStack>
+      <VStack align="stretch" mb={4} spacing={4}>
+        {/* Filtri temporali */}
+        <HStack spacing={4}>
+          <Select
+            placeholder="Periodo temporale"
+            value={filtroTemporale}
+            onChange={(e) => setFiltroTemporale(e.target.value as FiltroTemporale)}
+            maxW="300px"
+          >
+            <option value="tutti">Tutti i periodi</option>
+            <option value="oggi">Oggi</option>
+            <option value="ultimi-7-giorni">Ultimi 7 giorni</option>
+            <option value="ultimi-30-giorni">Ultimi 30 giorni</option>
+            <option value="questo-mese">Questo mese</option>
+            <option value="mese-scorso">Mese scorso</option>
+            <option value="personalizzato">Personalizzato</option>
+          </Select>
+
+          {filtroTemporale === "personalizzato" && (
+            <>
+              <Input
+                type="date"
+                value={dataInizio}
+                onChange={(e) => setDataInizio(e.target.value)}
+                placeholder="Data inizio"
+              />
+              <Text>al</Text>
+              <Input
+                type="date"
+                value={dataFine}
+                onChange={(e) => setDataFine(e.target.value)}
+                placeholder="Data fine"
+              />
+            </>
+          )}
+
+          {(filtroTemporale !== "tutti" && filtroTemporale !== "personalizzato") && (
+            <Text fontSize="sm" color="gray.600">
+              {dataInizio && `Dal ${new Date(dataInizio).toLocaleDateString("it-IT")}`}
+              {dataFine && ` al ${new Date(dataFine).toLocaleDateString("it-IT")}`}
+            </Text>
+          )}
+        </HStack>
+
+        {/* Filtri per categoria e cliente */}
+        <HStack spacing={4}>
+          <Select
+            placeholder="Tutte le categorie"
+            value={filtroCategoria}
+            onChange={(e) => setFiltroCategoria(e.target.value)}
+            maxW="300px"
+          >
+            {categorie.map((c) => (
+              <option key={c.id} value={c.nome_categoria}>
+                {c.nome_categoria}
+              </option>
+            ))}
+          </Select>
+
+          <Select
+            placeholder="Tutti i clienti"
+            value={filtroCliente}
+            onChange={(e) => setFiltroCliente(e.target.value)}
+            maxW="300px"
+          >
+            {clienti.map((c) => (
+              <option key={c.id} value={c.nome_sala}>
+                {c.nome_sala}
+              </option>
+            ))}
+          </Select>
+
+          <Button onClick={resetFiltri} leftIcon={<FiCalendar />}>
+            Reset Filtri
+          </Button>
+        </HStack>
+      </VStack>
 
       {/* Tabella segnalazioni */}
       <Box bg="white" p={6} borderRadius="lg" shadow="md">
@@ -223,4 +355,3 @@ export default function DashboardAdmin() {
     </Flex>
   );
 }
-
