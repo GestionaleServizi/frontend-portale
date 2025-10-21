@@ -92,9 +92,10 @@ export default function DashboardAdmin() {
   const toast = useToast();
   const navigate = useNavigate();
 
-  const bgGradient = useColorModeValue(
-    "linear(135deg, #667eea 0%, #764ba2 100%)",
-    "linear(135deg, #4c669f 0%, #3b5998 100%)"
+  // SFONDO HEADER CAMBIATO - più chiaro e leggibile
+  const headerBg = useColorModeValue(
+    "linear(135deg, #4f46e5 0%, #7c3aed 100%)", // Viola più chiaro
+    "linear(135deg, #3730a3 0%, #5b21b6 100%)"
   );
 
   const cardBg = useColorModeValue("white", "gray.800");
@@ -247,8 +248,8 @@ export default function DashboardAdmin() {
 
   return (
     <Box minH="100vh" bg="gray.50" position="relative">
-      {/* Header - TESTO MOLTO PIÙ LEGGIBILE */}
-      <Box bg={bgGradient} px={6} py={4} shadow="lg">
+      {/* Header - SFONDO CAMBIATO per migliore leggibilità */}
+      <Box bg={headerBg} px={6} py={4} shadow="lg">
         <Flex align="center" justify="space-between">
           <HStack spacing={4}>
             <Image 
@@ -257,73 +258,80 @@ export default function DashboardAdmin() {
               boxSize="50px" 
               borderRadius="lg"
               shadow="md"
+              bg="white"
+              p={1}
             />
             <Box>
-              <Heading size="lg" color="white" fontWeight="bold" textShadow="0 1px 2px rgba(0,0,0,0.2)">
+              <Heading size="lg" color="white" fontWeight="bold" textShadow="0 2px 4px rgba(0,0,0,0.3)">
                 Dashboard Amministratore
               </Heading>
-              <Text color="white" fontSize="sm" fontWeight="semibold" opacity={0.95} textShadow="0 1px 1px rgba(0,0,0,0.2)">
+              <Text color="white" fontSize="md" fontWeight="medium" opacity={0.95} textShadow="0 1px 2px rgba(0,0,0,0.3)">
                 Gestione completa del sistema
               </Text>
             </Box>
           </HStack>
 
-          {/* Pulsanti header - TESTO MOLTO LEGGIBILE */}
+          {/* Pulsanti header - CONTRASTO MASSIMO */}
           <HStack spacing={3}>
             <Button 
-              colorScheme="whiteAlpha" 
+              bg="white"
+              color="blue.600"
               leftIcon={<FiUsers />} 
               onClick={() => navigate("/utenti")}
-              color="white"
-              fontWeight="semibold"
-              _hover={{ bg: "whiteAlpha.300", transform: "translateY(-1px)" }}
-              _active={{ bg: "whiteAlpha.400" }}
+              fontWeight="bold"
+              _hover={{ bg: "gray.100", transform: "translateY(-2px)", shadow: "lg" }}
+              _active={{ bg: "gray.200" }}
+              shadow="md"
             >
               Utenti
             </Button>
             <Button 
-              colorScheme="whiteAlpha" 
+              bg="white"
+              color="purple.600"
               leftIcon={<FiFolder />} 
               onClick={() => navigate("/categorie")}
-              color="white"
-              fontWeight="semibold"
-              _hover={{ bg: "whiteAlpha.300", transform: "translateY(-1px)" }}
-              _active={{ bg: "whiteAlpha.400" }}
+              fontWeight="bold"
+              _hover={{ bg: "gray.100", transform: "translateY(-2px)", shadow: "lg" }}
+              _active={{ bg: "gray.200" }}
+              shadow="md"
             >
               Categorie
             </Button>
             <Button 
-              colorScheme="whiteAlpha" 
+              bg="white"
+              color="teal.600"
               leftIcon={<FiBriefcase />} 
               onClick={() => navigate("/clienti")}
-              color="white"
-              fontWeight="semibold"
-              _hover={{ bg: "whiteAlpha.300", transform: "translateY(-1px)" }}
-              _active={{ bg: "whiteAlpha.400" }}
+              fontWeight="bold"
+              _hover={{ bg: "gray.100", transform: "translateY(-2px)", shadow: "lg" }}
+              _active={{ bg: "gray.200" }}
+              shadow="md"
             >
               Clienti
             </Button>
             <Button 
-              colorScheme="whiteAlpha" 
+              bg="green.500"
+              color="white"
               leftIcon={<FiFileText />} 
               onClick={esportaCSV}
-              color="white"
-              fontWeight="semibold"
-              _hover={{ bg: "whiteAlpha.300", transform: "translateY(-1px)" }}
-              _active={{ bg: "whiteAlpha.400" }}
+              fontWeight="bold"
+              _hover={{ bg: "green.600", transform: "translateY(-2px)", shadow: "lg" }}
+              _active={{ bg: "green.700" }}
+              shadow="md"
             >
               CSV
             </Button>
             <Button 
-              colorScheme="whiteAlpha" 
+              bg="transparent"
+              color="white"
               leftIcon={<FiLogOut />} 
               onClick={logout} 
               variant="outline"
-              color="white"
               borderColor="white"
               borderWidth="2px"
-              fontWeight="semibold"
+              fontWeight="bold"
               _hover={{ bg: "white", color: "blue.600" }}
+              _active={{ bg: "whiteAlpha.300" }}
             >
               Logout
             </Button>
@@ -332,42 +340,44 @@ export default function DashboardAdmin() {
       </Box>
 
       <Box p={6}>
-        {/* PRIMA RIGA: Card gestione + Contatore segnalazioni */}
+        {/* PRIMA RIGA: Card Segnalazioni a SINISTRA + altre card */}
         <SimpleGrid columns={{ base: 1, md: 4 }} spacing={6} mb={8}>
-          {/* Card Gestione Utenti */}
+          {/* Card Segnalazioni - PRIMA A SINISTRA */}
           <ScaleFade in={!isLoading} initialScale={0.9}>
             <Card 
               bg={cardBg} 
-              shadow="md" 
+              shadow="lg" 
               border="1px" 
               borderColor={borderColor}
-              _hover={{ 
-                shadow: "lg", 
-                transform: "translateY(-3px)",
-                animation: `${pulseAnimation} 0.5s ease-in-out`
-              }}
+              _hover={{ shadow: "xl", transform: "translateY(-2px)" }}
               transition="all 0.3s"
-              cursor="pointer"
-              onClick={() => navigate("/utenti")}
-              minH="120px"
+              minH="140px"
             >
               <CardBody>
-                <HStack spacing={4} align="start">
-                  <Icon as={FiUsers} boxSize={8} color="blue.500" mt={1} />
-                  <Box flex={1}>
-                    <Text fontWeight="bold" color="gray.800" fontSize="lg" mb={1}>
-                      Gestione Utenti
-                    </Text>
-                    <Text fontSize="sm" color="gray.600" lineHeight="1.4">
-                      Gestisci gestione utenti del sistema
-                    </Text>
-                  </Box>
-                </HStack>
+                <VStack spacing={4} align="center" justify="center" height="100%">
+                  <Icon as={FiBarChart2} boxSize={10} color="blue.500" />
+                  <Text fontSize="4xl" fontWeight="bold" color="gray.800">
+                    {segnalazioniFiltrate.length}
+                  </Text>
+                  <Text fontSize="xl" fontWeight="semibold" color="gray.600">
+                    Segnalazioni
+                  </Text>
+                  <Button
+                    colorScheme="blue"
+                    leftIcon={<FiDownload />}
+                    onClick={esportaCSV}
+                    size="md"
+                    width="full"
+                    mt={2}
+                  >
+                    Esporta CSV
+                  </Button>
+                </VStack>
               </CardBody>
             </Card>
           </ScaleFade>
 
-          {/* Card Categorie */}
+          {/* Card Gestione Utenti */}
           <ScaleFade in={!isLoading} initialScale={0.9} delay={0.1}>
             <Card 
               bg={cardBg} 
@@ -381,26 +391,24 @@ export default function DashboardAdmin() {
               }}
               transition="all 0.3s"
               cursor="pointer"
-              onClick={() => navigate("/categorie")}
-              minH="120px"
+              onClick={() => navigate("/utenti")}
+              minH="140px"
             >
               <CardBody>
-                <HStack spacing={4} align="start">
-                  <Icon as={FiFolder} boxSize={8} color="purple.500" mt={1} />
-                  <Box flex={1}>
-                    <Text fontWeight="bold" color="gray.800" fontSize="lg" mb={1}>
-                      Categorie
-                    </Text>
-                    <Text fontSize="sm" color="gray.600" lineHeight="1.4">
-                      Gestisci categorie del sistema
-                    </Text>
-                  </Box>
-                </HStack>
+                <VStack spacing={3} align="center" justify="center" height="100%">
+                  <Icon as={FiUsers} boxSize={10} color="blue.500" />
+                  <Text fontWeight="bold" color="gray.800" fontSize="xl" textAlign="center">
+                    Gestione Utenti
+                  </Text>
+                  <Text fontSize="sm" color="gray.600" textAlign="center" lineHeight="1.4">
+                    Gestisci gestione utenti del sistema
+                  </Text>
+                </VStack>
               </CardBody>
             </Card>
           </ScaleFade>
 
-          {/* Card Clienti */}
+          {/* Card Categorie */}
           <ScaleFade in={!isLoading} initialScale={0.9} delay={0.2}>
             <Card 
               bg={cardBg} 
@@ -414,54 +422,49 @@ export default function DashboardAdmin() {
               }}
               transition="all 0.3s"
               cursor="pointer"
-              onClick={() => navigate("/clienti")}
-              minH="120px"
+              onClick={() => navigate("/categorie")}
+              minH="140px"
             >
               <CardBody>
-                <HStack spacing={4} align="start">
-                  <Icon as={FiBriefcase} boxSize={8} color="teal.500" mt={1} />
-                  <Box flex={1}>
-                    <Text fontWeight="bold" color="gray.800" fontSize="lg" mb={1}>
-                      Clienti
-                    </Text>
-                    <Text fontSize="sm" color="gray.600" lineHeight="1.4">
-                      Gestisci clienti del sistema
-                    </Text>
-                  </Box>
-                </HStack>
+                <VStack spacing={3} align="center" justify="center" height="100%">
+                  <Icon as={FiFolder} boxSize={10} color="purple.500" />
+                  <Text fontWeight="bold" color="gray.800" fontSize="xl" textAlign="center">
+                    Categorie
+                  </Text>
+                  <Text fontSize="sm" color="gray.600" textAlign="center" lineHeight="1.4">
+                    Gestisci categorie del sistema
+                  </Text>
+                </VStack>
               </CardBody>
             </Card>
           </ScaleFade>
 
-          {/* Card Contatore Segnalazioni */}
+          {/* Card Clienti */}
           <ScaleFade in={!isLoading} initialScale={0.9} delay={0.3}>
             <Card 
               bg={cardBg} 
               shadow="md" 
               border="1px" 
               borderColor={borderColor}
-              _hover={{ shadow: "lg", transform: "translateY(-2px)" }}
+              _hover={{ 
+                shadow: "lg", 
+                transform: "translateY(-3px)",
+                animation: `${pulseAnimation} 0.5s ease-in-out`
+              }}
               transition="all 0.3s"
-              minH="120px"
+              cursor="pointer"
+              onClick={() => navigate("/clienti")}
+              minH="140px"
             >
               <CardBody>
                 <VStack spacing={3} align="center" justify="center" height="100%">
-                  <Icon as={FiBarChart2} boxSize={8} color="green.500" />
-                  <Text fontSize="3xl" fontWeight="bold" color="gray.800">
-                    {segnalazioniFiltrate.length}
+                  <Icon as={FiBriefcase} boxSize={10} color="teal.500" />
+                  <Text fontWeight="bold" color="gray.800" fontSize="xl" textAlign="center">
+                    Clienti
                   </Text>
-                  <Text fontSize="lg" fontWeight="medium" color="gray.600" textAlign="center">
-                    Segnalazioni
+                  <Text fontSize="sm" color="gray.600" textAlign="center" lineHeight="1.4">
+                    Gestisci clienti del sistema
                   </Text>
-                  <Button
-                    colorScheme="green"
-                    leftIcon={<FiDownload />}
-                    onClick={esportaCSV}
-                    size="sm"
-                    width="full"
-                  >
-                    Esporta CSV
-                  </Button>
                 </VStack>
               </CardBody>
             </Card>
