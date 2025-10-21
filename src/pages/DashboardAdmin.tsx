@@ -265,43 +265,76 @@ export default function DashboardAdmin() {
             </Box>
           </HStack>
 
-          {/* Pulsanti header - STATISTICHE con numeri */}
+          {/* Pulsanti header - STATISTICHE con bordi come Logout */}
           <HStack spacing={6}>
-            <VStack spacing={0} align="center">
+            {/* Utenti */}
+            <Box 
+              border="2px" 
+              borderColor="blue.400"
+              borderRadius="lg"
+              px={4}
+              py={2}
+              bg="blue.50"
+              textAlign="center"
+              minW="100px"
+            >
               <Text fontSize="2xl" fontWeight="bold" color="blue.600">
                 {utenti.length}
               </Text>
-              <Text fontSize="sm" color="gray.600" fontWeight="medium">
+              <Text fontSize="md" color="blue.700" fontWeight="bold">
                 Utenti
               </Text>
-            </VStack>
+            </Box>
             
-            <VStack spacing={0} align="center">
-              <Text fontSize="2xl" fontWeight="bold" color="purple.600">
+            {/* Clienti */}
+            <Box 
+              border="2px" 
+              borderColor="teal.400"
+              borderRadius="lg"
+              px={4}
+              py={2}
+              bg="teal.50"
+              textAlign="center"
+              minW="100px"
+            >
+              <Text fontSize="2xl" fontWeight="bold" color="teal.600">
                 {clienti.length}
               </Text>
-              <Text fontSize="sm" color="gray.600" fontWeight="medium">
+              <Text fontSize="md" color="teal.700" fontWeight="bold">
                 Clienti
               </Text>
-            </VStack>
+            </Box>
             
-            <VStack spacing={0} align="center">
-              <Text fontSize="2xl" fontWeight="bold" color="teal.600">
+            {/* Categorie */}
+            <Box 
+              border="2px" 
+              borderColor="purple.400"
+              borderRadius="lg"
+              px={4}
+              py={2}
+              bg="purple.50"
+              textAlign="center"
+              minW="100px"
+            >
+              <Text fontSize="2xl" fontWeight="bold" color="purple.600">
                 {categorie.length}
               </Text>
-              <Text fontSize="sm" color="gray.600" fontWeight="medium">
+              <Text fontSize="md" color="purple.700" fontWeight="bold">
                 Categorie
               </Text>
-            </VStack>
+            </Box>
 
+            {/* Logout */}
             <Button 
               colorScheme="red"
               leftIcon={<FiLogOut />} 
               onClick={logout} 
               variant="outline"
-              borderColor="red.300"
-              fontWeight="medium"
+              borderWidth="2px"
+              borderColor="red.400"
+              fontWeight="bold"
               _hover={{ bg: "red.50" }}
+              size="lg"
             >
               Logout
             </Button>
