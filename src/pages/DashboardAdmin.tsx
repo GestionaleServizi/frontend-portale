@@ -92,11 +92,8 @@ export default function DashboardAdmin() {
   const toast = useToast();
   const navigate = useNavigate();
 
-  // SFONDO HEADER CAMBIATO - più chiaro e leggibile
-  const headerBg = useColorModeValue(
-    "linear(135deg, #4f46e5 0%, #7c3aed 100%)", // Viola più chiaro
-    "linear(135deg, #3730a3 0%, #5b21b6 100%)"
-  );
+  // SFONDO HEADER BIANCO con testo nero
+  const headerBg = useColorModeValue("white", "gray.800");
 
   const cardBg = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
@@ -248,8 +245,8 @@ export default function DashboardAdmin() {
 
   return (
     <Box minH="100vh" bg="gray.50" position="relative">
-      {/* Header - SFONDO CAMBIATO per migliore leggibilità */}
-      <Box bg={headerBg} px={6} py={4} shadow="lg">
+      {/* Header - SFONDO BIANCO con testo NERO */}
+      <Box bg={headerBg} px={6} py={4} shadow="md" borderBottom="1px" borderColor="gray.200">
         <Flex align="center" justify="space-between">
           <HStack spacing={4}>
             <Image 
@@ -257,81 +254,54 @@ export default function DashboardAdmin() {
               alt="Logo" 
               boxSize="50px" 
               borderRadius="lg"
-              shadow="md"
-              bg="white"
-              p={1}
             />
             <Box>
-              <Heading size="lg" color="white" fontWeight="bold" textShadow="0 2px 4px rgba(0,0,0,0.3)">
+              <Heading size="lg" color="gray.800" fontWeight="bold">
                 Dashboard Amministratore
               </Heading>
-              <Text color="white" fontSize="md" fontWeight="medium" opacity={0.95} textShadow="0 1px 2px rgba(0,0,0,0.3)">
+              <Text color="gray.600" fontSize="md" fontWeight="medium">
                 Gestione completa del sistema
               </Text>
             </Box>
           </HStack>
 
-          {/* Pulsanti header - CONTRASTO MASSIMO */}
-          <HStack spacing={3}>
+          {/* Pulsanti header - STATISTICHE con numeri */}
+          <HStack spacing={6}>
+            <VStack spacing={0} align="center">
+              <Text fontSize="2xl" fontWeight="bold" color="blue.600">
+                {utenti.length}
+              </Text>
+              <Text fontSize="sm" color="gray.600" fontWeight="medium">
+                Utenti
+              </Text>
+            </VStack>
+            
+            <VStack spacing={0} align="center">
+              <Text fontSize="2xl" fontWeight="bold" color="purple.600">
+                {clienti.length}
+              </Text>
+              <Text fontSize="sm" color="gray.600" fontWeight="medium">
+                Clienti
+              </Text>
+            </VStack>
+            
+            <VStack spacing={0} align="center">
+              <Text fontSize="2xl" fontWeight="bold" color="teal.600">
+                {categorie.length}
+              </Text>
+              <Text fontSize="sm" color="gray.600" fontWeight="medium">
+                Categorie
+              </Text>
+            </VStack>
+
             <Button 
-              bg="white"
-              color="blue.600"
-              leftIcon={<FiUsers />} 
-              onClick={() => navigate("/utenti")}
-              fontWeight="bold"
-              _hover={{ bg: "gray.100", transform: "translateY(-2px)", shadow: "lg" }}
-              _active={{ bg: "gray.200" }}
-              shadow="md"
-            >
-              Utenti
-            </Button>
-            <Button 
-              bg="white"
-              color="purple.600"
-              leftIcon={<FiFolder />} 
-              onClick={() => navigate("/categorie")}
-              fontWeight="bold"
-              _hover={{ bg: "gray.100", transform: "translateY(-2px)", shadow: "lg" }}
-              _active={{ bg: "gray.200" }}
-              shadow="md"
-            >
-              Categorie
-            </Button>
-            <Button 
-              bg="white"
-              color="teal.600"
-              leftIcon={<FiBriefcase />} 
-              onClick={() => navigate("/clienti")}
-              fontWeight="bold"
-              _hover={{ bg: "gray.100", transform: "translateY(-2px)", shadow: "lg" }}
-              _active={{ bg: "gray.200" }}
-              shadow="md"
-            >
-              Clienti
-            </Button>
-            <Button 
-              bg="green.500"
-              color="white"
-              leftIcon={<FiFileText />} 
-              onClick={esportaCSV}
-              fontWeight="bold"
-              _hover={{ bg: "green.600", transform: "translateY(-2px)", shadow: "lg" }}
-              _active={{ bg: "green.700" }}
-              shadow="md"
-            >
-              CSV
-            </Button>
-            <Button 
-              bg="transparent"
-              color="white"
+              colorScheme="red"
               leftIcon={<FiLogOut />} 
               onClick={logout} 
               variant="outline"
-              borderColor="white"
-              borderWidth="2px"
-              fontWeight="bold"
-              _hover={{ bg: "white", color: "blue.600" }}
-              _active={{ bg: "whiteAlpha.300" }}
+              borderColor="red.300"
+              fontWeight="medium"
+              _hover={{ bg: "red.50" }}
             >
               Logout
             </Button>
@@ -340,9 +310,9 @@ export default function DashboardAdmin() {
       </Box>
 
       <Box p={6}>
-        {/* PRIMA RIGA: Card Segnalazioni a SINISTRA + altre card */}
+        {/* PRIMA RIGA: Card Segnalazioni + Gestione */}
         <SimpleGrid columns={{ base: 1, md: 4 }} spacing={6} mb={8}>
-          {/* Card Segnalazioni - PRIMA A SINISTRA */}
+          {/* Card Segnalazioni */}
           <ScaleFade in={!isLoading} initialScale={0.9}>
             <Card 
               bg={cardBg} 
