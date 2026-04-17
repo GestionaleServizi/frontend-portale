@@ -19,6 +19,14 @@ import {
   Textarea,
   useToast,
   VStack,
+  FormControl,
+  FormLabel,
+  Grid,
+  GridItem,
+  Switch,
+  RadioGroup,
+  Radio,
+  Stack,
 } from "@chakra-ui/react";
 
 type Segnalazione = {
@@ -42,10 +50,23 @@ export default function Segnalazione() {
   const [filtroData, setFiltroData] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("");
 
+  // Campi base
   const [descrizione, setDescrizione] = useState("");
   const [categoriaId, setCategoriaId] = useState("");
   const [ora, setOra] = useState("");
   const [data, setData] = useState("");
+
+  // Campi specifici per CONTROLLI FFOO
+  const [oraControllo, setOraControllo] = useState("");
+  const [numeroAgenti, setNumeroAgenti] = useState("");
+  const [personeControllate, setPersoneControllate] = useState("");
+  const [attivitaBloccata, setAttivitaBloccata] = useState("NO");
+  const [contestazioni, setContestazioni] = useState("NO");
+  const [richiesteStruttura, setRichiesteStruttura] = useState("");
+  const [verbaliRilasciati, setVerbaliRilasciati] = useState("NO");
+
+  const [showCampiFFOO, setShowCampiFFOO] = useState(false);
+  const [nomeCategoriaSelezionata, setNomeCategoriaSelezionata] = useState("");
 
   const toast = useToast();
 
@@ -57,6 +78,9 @@ export default function Segnalazione() {
     
     setData(currentDate);
     setOra(currentTime);
+    
+    // Imposta ora controllo con ora corrente
+    setOraControllo(currentTime);
   }, []);
 
   // Carica dati
@@ -90,6 +114,32 @@ export default function Segnalazione() {
     loadData();
   }, []);
 
+  // Gestione cambio categoria
+  const handleCategoriaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const categoriaId = e.target.value;
+    setCategoriaId(categoriaId);
+    
+    // Trova il nome della categoria selezionata
+    const categoriaSelezionata = categorie.find(c => c.id.toString() === categoriaId);
+    const nomeCategoria = categoriaSelezionata?.nome_categoria || "";
+    setNomeCategoriaSelezionata(nomeCategoria);
+    
+    // Mostra/nascondi campi FFOO
+    const isFFOO = nomeCategoria === "CONTROLLI FFOO";
+    setShowCampiFFOO(isFFOO);
+    
+    // Resetta i campi FFOO se si cambia categoria
+    if (!isFFOO) {
+      setOraControllo("");
+      setNumeroAgenti("");
+      setPersoneControllate("");
+      setAttivitaBloccata("NO");
+      setContestazioni("NO");
+      setRichiesteStruttura("");
+      setVerbaliRilasciati("NO");
+    }
+  };
+
   // Inserisci nuova segnalazione
   const handleSubmit = async () => {
     if (!descrizione || !categoriaId) {
@@ -103,6 +153,25 @@ export default function Segnalazione() {
       const currentDate = now.toISOString().split('T')[0];
       const currentTime = now.toTimeString().slice(0, 5);
       
+      // Prepara i dati da inviare
+      const payload: any = {
+        data: currentDate,
+        ora: currentTime,
+        descrizione,
+        categoria_id: categoriaId,
+      };
+
+      // Aggiungi campi FFOO solo se è CONTROLLI FFOO
+      if (nomeCategoriaSelezionata === "CONTROLLI FFOO") {
+        payload.ora_controllo = oraControllo || currentTime;
+        payload.numero_agenti = numeroAgenti;
+        payload.persone_controllate = personeControllate;
+        payload.attivita_bloccata = attivitaBloccata;
+        payload.contestazioni = contestazioni;
+        payload.richieste_struttura = richiesteStruttura;
+        payload.verbali_rilasciati = verbaliRilasciati;
+      }
+
       const res = await fetch(
         `${import.meta.env.VITE_API_BASE_URL}/segnalazioni`,
         {
@@ -111,23 +180,37 @@ export default function Segnalazione() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({
-            data: currentDate, // ✅ Usa la data corrente al momento dell'invio
-            ora: currentTime,  // ✅ Usa l'ora corrente al momento dell'invio
-            descrizione,
-            categoria_id: categoriaId,
-          }),
+          body: JSON.stringify(payload),
         }
       );
 
       if (!res.ok) throw new Error("Errore inserimento");
 
-      toast({ title: "Segnalazione inserita", status: "success" });
+      toast({ 
+        title: "Segnalazione inserita", 
+        status: "success",
+        description: nomeCategoriaSelezionata === "CONTROLLI FFOO" 
+          ? "Inclusi dettagli controllo FFOO" 
+          : "Segnalazione registrata"
+      });
+      
+      // Reset form
       setDescrizione("");
       setCategoriaId("");
+      setOraControllo("");
+      setNumeroAgenti("");
+      setPersoneControllate("");
+      setAttivitaBloccata("NO");
+      setContestazioni("NO");
+      setRichiesteStruttura("");
+      setVerbaliRilasciati("NO");
+      setShowCampiFFOO(false);
+      setNomeCategoriaSelezionata("");
+      
       // ✅ Aggiorna anche i campi visualizzati con data/ora corrente
       setData(currentDate);
       setOra(currentTime);
+      
       loadData();
     } catch {
       toast({ title: "Errore inserimento segnalazione", status: "error" });
@@ -161,6 +244,7 @@ export default function Segnalazione() {
           Nuova Segnalazione
         </Heading>
         <VStack spacing={4} align="stretch">
+          {/* Campi base */}
           <HStack>
             <Input
               type="date"
@@ -181,7 +265,7 @@ export default function Segnalazione() {
             <Select
               placeholder="Seleziona categoria"
               value={categoriaId}
-              onChange={(e) => setCategoriaId(e.target.value)}
+              onChange={handleCategoriaChange}
             >
               {(categorie || []).map((c) => (
                 <option key={c.id} value={c.id}>
@@ -190,14 +274,122 @@ export default function Segnalazione() {
               ))}
             </Select>
           </HStack>
+
+          {/* Descrizione */}
           <Textarea
-            placeholder="Descrizione"
+            placeholder="Descrizione della segnalazione"
             value={descrizione}
             onChange={(e) => setDescrizione(e.target.value)}
-            rows={4}
+            rows={3}
           />
-          <Button colorScheme="blue" onClick={handleSubmit}>
-            Inserisci
+
+          {/* Campi CONTROLLI FFOO (visibili solo se categoria selezionata = CONTROLLI FFOO) */}
+          {showCampiFFOO && (
+            <Box 
+              borderWidth="1px" 
+              borderRadius="md" 
+              p={4} 
+              bg="blue.50" 
+              borderColor="blue.200"
+            >
+              <Heading size="sm" mb={3} color="blue.700">
+                👮 DETTAGLI CONTROLLO FFOO
+              </Heading>
+              
+              <Grid templateColumns="repeat(2, 1fr)" gap={4}>
+                {/* Ora controllo */}
+                <FormControl>
+                  <FormLabel>🕒 Ora del controllo</FormLabel>
+                  <Input
+                    type="time"
+                    value={oraControllo}
+                    onChange={(e) => setOraControllo(e.target.value)}
+                    placeholder="HH:MM"
+                  />
+                </FormControl>
+
+                {/* Numero agenti */}
+                <FormControl>
+                  <FormLabel>👮 Numero agenti</FormLabel>
+                  <Input
+                    type="number"
+                    value={numeroAgenti}
+                    onChange={(e) => setNumeroAgenti(e.target.value)}
+                    placeholder="Es. 2"
+                    min="0"
+                  />
+                </FormControl>
+
+                {/* Persone controllate */}
+                <FormControl>
+                  <FormLabel>👥 Persone controllate</FormLabel>
+                  <Input
+                    type="number"
+                    value={personeControllate}
+                    onChange={(e) => setPersoneControllate(e.target.value)}
+                    placeholder="Es. 5"
+                    min="0"
+                  />
+                </FormControl>
+
+                {/* Attività bloccata */}
+                <FormControl>
+                  <FormLabel>🛑 Hanno bloccato l'attività?</FormLabel>
+                  <Select
+                    value={attivitaBloccata}
+                    onChange={(e) => setAttivitaBloccata(e.target.value)}
+                  >
+                    <option value="SI">SI</option>
+                    <option value="NO">NO</option>
+                  </Select>
+                </FormControl>
+
+                {/* Contestazioni */}
+                <FormControl>
+                  <FormLabel>⚖️ Ci sono state contestazioni?</FormLabel>
+                  <Select
+                    value={contestazioni}
+                    onChange={(e) => setContestazioni(e.target.value)}
+                  >
+                    <option value="SI">SI</option>
+                    <option value="NO">NO</option>
+                  </Select>
+                </FormControl>
+
+                {/* Verbali rilasciati */}
+                <FormControl>
+                  <FormLabel>📄 Sono stati rilasciati Verbali?</FormLabel>
+                  <Select
+                    value={verbaliRilasciati}
+                    onChange={(e) => setVerbaliRilasciati(e.target.value)}
+                  >
+                    <option value="SI">SI</option>
+                    <option value="NO">NO</option>
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              {/* Richieste struttura */}
+              <FormControl mt={4}>
+                <FormLabel>
+                  🏛️ Se i controlli riguardano la struttura specificare le richieste fatte
+                </FormLabel>
+                <Textarea
+                  value={richiesteStruttura}
+                  onChange={(e) => setRichiesteStruttura(e.target.value)}
+                  placeholder="Descrivi eventuali richieste specifiche..."
+                  rows={2}
+                />
+              </FormControl>
+              
+              <Text fontSize="sm" color="gray.600" mt={2}>
+                ⓘ Questi campi saranno inclusi automaticamente nella descrizione
+              </Text>
+            </Box>
+          )}
+
+          <Button colorScheme="blue" onClick={handleSubmit} size="lg">
+            {showCampiFFOO ? "📝 Inserisci Segnalazione FFOO" : "Inserisci Segnalazione"}
           </Button>
         </VStack>
       </Box>
@@ -251,7 +443,7 @@ export default function Segnalazione() {
                 <Td>{s.ora}</Td>
                 <Td>{s.categoria}</Td>
                 <Td>{s.sala}</Td>
-                <Td>{s.descrizione}</Td>
+                <Td whiteSpace="pre-wrap">{s.descrizione}</Td>
               </Tr>
             ))}
           </Tbody>
