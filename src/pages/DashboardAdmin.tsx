@@ -76,6 +76,7 @@ const pulseAnimation = keyframes`
 export default function DashboardAdmin() {
   const { token, logout } = useAuth();
   const [segnalazioni, setSegnalazioni] = useState<Segnalazione[]>([]);
+  const [totaleSegnalazioni, setTotaleSegnalazioni] = useState(0);
   const [categorie, setCategorie] = useState<Categoria[]>([]);
   const [clienti, setClienti] = useState<Cliente[]>([]);
   const [utenti, setUtenti] = useState<any[]>([]);
@@ -97,6 +98,41 @@ export default function DashboardAdmin() {
 
   const cardBg = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
+
+  // Prepara i parametri per il conteggio totale coerente con i filtri attivi
+  const buildCountQueryString = () => {
+    const params = new URLSearchParams();
+
+    if (dataInizio) params.append("dataInizio", dataInizio);
+    if (dataFine) params.append("dataFine", dataFine);
+    if (filtroCategoria) params.append("categoria", filtroCategoria);
+    if (filtroCliente) params.append("sala", filtroCliente);
+    if (searchTerm) params.append("search", searchTerm);
+
+    return params.toString();
+  };
+
+  // Carica il numero totale reale delle segnalazioni, non limitato alle prime 100 righe
+  const loadTotaleSegnalazioni = async () => {
+    try {
+      const queryString = buildCountQueryString();
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/segnalazioni/count${queryString ? `?${queryString}` : ""}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      const data = await res.json();
+      setTotaleSegnalazioni(data.totale || 0);
+    } catch {
+      toast({
+        title: "Errore conteggio segnalazioni",
+        status: "error",
+        duration: 3000,
+      });
+    }
+  };
 
   // Carica dati
   const loadData = async () => {
@@ -122,6 +158,7 @@ export default function DashboardAdmin() {
       setCategorie(await catRes.json());
       setClienti(await cliRes.json());
       setUtenti(await uteRes.json());
+      await loadTotaleSegnalazioni();
 
     } catch {
       toast({ 
@@ -184,6 +221,11 @@ export default function DashboardAdmin() {
     setDataInizio(inizio.toISOString().split('T')[0]);
     setDataFine(fine.toISOString().split('T')[0]);
   }, [filtroTemporale]);
+
+  useEffect(() => {
+    if (!token) return;
+    loadTotaleSegnalazioni();
+  }, [dataInizio, dataFine, filtroCategoria, filtroCliente, searchTerm]);
 
   // Filtri combinati
   const segnalazioniFiltrate = segnalazioni.filter((s) => {
@@ -360,7 +402,7 @@ export default function DashboardAdmin() {
                 <VStack spacing={4} align="center" justify="center" height="100%">
                   <Icon as={FiBarChart2} boxSize={10} color="blue.500" />
                   <Text fontSize="4xl" fontWeight="bold" color="gray.800">
-                    {segnalazioniFiltrate.length}
+                    {totaleSegnalazioni}
                   </Text>
                   <Text fontSize="xl" fontWeight="semibold" color="gray.600">
                     Segnalazioni
