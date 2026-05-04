@@ -89,6 +89,8 @@ export default function DashboardAdmin() {
   const [filtroCliente, setFiltroCliente] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [paginaCorrente, setPaginaCorrente] = useState(1);
+  const pageSize = 100;
   
   const toast = useToast();
   const navigate = useNavigate();
@@ -99,8 +101,8 @@ export default function DashboardAdmin() {
   const cardBg = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
 
-  // Prepara i parametri per il conteggio totale coerente con i filtri attivi
-  const buildCountQueryString = () => {
+  // Prepara i parametri per conteggio e tabella, mantenendo coerenti card e lista
+  const buildSegnalazioniQueryString = (includePagination = false) => {
     const params = new URLSearchParams();
 
     if (dataInizio) params.append("dataInizio", dataInizio);
@@ -109,13 +111,18 @@ export default function DashboardAdmin() {
     if (filtroCliente) params.append("sala", filtroCliente);
     if (searchTerm) params.append("search", searchTerm);
 
+    if (includePagination) {
+      params.append("limit", String(pageSize));
+      params.append("offset", String((paginaCorrente - 1) * pageSize));
+    }
+
     return params.toString();
   };
 
   // Carica il numero totale reale delle segnalazioni, non limitato alle prime 100 righe
   const loadTotaleSegnalazioni = async () => {
     try {
-      const queryString = buildCountQueryString();
+      const queryString = buildSegnalazioniQueryString();
       const res = await fetch(
         `${import.meta.env.VITE_API_BASE_URL}/segnalazioni/count${queryString ? `?${queryString}` : ""}`,
         {
@@ -134,14 +141,33 @@ export default function DashboardAdmin() {
     }
   };
 
+  // Carica le segnalazioni della pagina corrente, applicando i filtri lato backend
+  const loadSegnalazioni = async () => {
+    try {
+      const queryString = buildSegnalazioniQueryString(true);
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/segnalazioni${queryString ? `?${queryString}` : ""}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      const data = await res.json();
+      setSegnalazioni(data);
+    } catch {
+      toast({
+        title: "Errore caricamento segnalazioni",
+        status: "error",
+        duration: 3000,
+      });
+    }
+  };
+
   // Carica dati
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [segRes, catRes, cliRes, uteRes] = await Promise.all([
-        fetch(`${import.meta.env.VITE_API_BASE_URL}/segnalazioni`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
+      const [catRes, cliRes, uteRes] = await Promise.all([
         fetch(`${import.meta.env.VITE_API_BASE_URL}/categorie`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
@@ -153,12 +179,11 @@ export default function DashboardAdmin() {
         }),
       ]);
 
-      const segnalazioniData = await segRes.json();
-      setSegnalazioni(segnalazioniData);
       setCategorie(await catRes.json());
       setClienti(await cliRes.json());
       setUtenti(await uteRes.json());
       await loadTotaleSegnalazioni();
+      await loadSegnalazioni();
 
     } catch {
       toast({ 
@@ -223,31 +248,17 @@ export default function DashboardAdmin() {
   }, [filtroTemporale]);
 
   useEffect(() => {
-    if (!token) return;
-    loadTotaleSegnalazioni();
+    setPaginaCorrente(1);
   }, [dataInizio, dataFine, filtroCategoria, filtroCliente, searchTerm]);
 
-  // Filtri combinati
-  const segnalazioniFiltrate = segnalazioni.filter((s) => {
-    // Filtro temporale
-    const dataSegnalazione = new Date(s.data);
-    const dataInizioFilter = dataInizio ? new Date(dataInizio) : null;
-    const dataFineFilter = dataFine ? new Date(dataFine) : null;
-    
-    const dataMatch = 
-      (!dataInizioFilter || dataSegnalazione >= dataInizioFilter) &&
-      (!dataFineFilter || dataSegnalazione <= dataFineFilter);
-    
-    // Altri filtri
-    const catMatch = filtroCategoria ? s.categoria === filtroCategoria : true;
-    const cliMatch = filtroCliente ? s.sala === filtroCliente : true;
-    const searchMatch = searchTerm ? 
-      s.descrizione.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.categoria?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.sala?.toLowerCase().includes(searchTerm.toLowerCase()) : true;
-    
-    return dataMatch && catMatch && cliMatch && searchMatch;
-  });
+  useEffect(() => {
+    if (!token) return;
+    loadTotaleSegnalazioni();
+    loadSegnalazioni();
+  }, [dataInizio, dataFine, filtroCategoria, filtroCliente, searchTerm, paginaCorrente]);
+
+  const totalePagine = Math.max(1, Math.ceil(totaleSegnalazioni / pageSize));
+  const segnalazioniFiltrate = segnalazioni;
 
   // Esporta CSV
   const esportaCSV = () => {
@@ -608,6 +619,7 @@ export default function DashboardAdmin() {
                     setFiltroCategoria("");
                     setFiltroCliente("");
                     setSearchTerm("");
+                    setPaginaCorrente(1);
                   }}
                 >
                   Reset Filtri
@@ -671,10 +683,45 @@ export default function DashboardAdmin() {
                   setFiltroCategoria("");
                   setFiltroCliente("");
                   setSearchTerm("");
+                  setDataInizio("");
+                  setDataFine("");
+                  setPaginaCorrente(1);
                 }}>
                   Ripristina filtri
                 </Button>
               </VStack>
+            )}
+
+            {totalePagine > 1 && (
+              <HStack justify="center" spacing={2} mt={6}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  isDisabled={paginaCorrente === 1}
+                  onClick={() => setPaginaCorrente((p) => Math.max(1, p - 1))}
+                >
+                  Precedente
+                </Button>
+                {Array.from({ length: totalePagine }, (_, i) => i + 1).map((pagina) => (
+                  <Button
+                    key={pagina}
+                    size="sm"
+                    colorScheme={pagina === paginaCorrente ? "blue" : undefined}
+                    variant={pagina === paginaCorrente ? "solid" : "outline"}
+                    onClick={() => setPaginaCorrente(pagina)}
+                  >
+                    {pagina}
+                  </Button>
+                ))}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  isDisabled={paginaCorrente === totalePagine}
+                  onClick={() => setPaginaCorrente((p) => Math.min(totalePagine, p + 1))}
+                >
+                  Successiva
+                </Button>
+              </HStack>
             )}
           </CardBody>
         </Card>
