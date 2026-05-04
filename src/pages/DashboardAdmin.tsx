@@ -702,17 +702,9 @@ export default function DashboardAdmin() {
                 >
                   Precedente
                 </Button>
-                {Array.from({ length: totalePagine }, (_, i) => i + 1).map((pagina) => (
-                  <Button
-                    key={pagina}
-                    size="sm"
-                    colorScheme={pagina === paginaCorrente ? "blue" : undefined}
-                    variant={pagina === paginaCorrente ? "solid" : "outline"}
-                    onClick={() => setPaginaCorrente(pagina)}
-                  >
-                    {pagina}
-                  </Button>
-                ))}
+                <Text fontSize="sm" color="gray.600">
+                  Pagina {paginaCorrente} di {totalePagine}
+                </Text>
                 <Button
                   size="sm"
                   variant="outline"
