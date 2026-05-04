@@ -20,41 +20,93 @@ type Categoria = { id: number; nome_categoria: string };
 export default function DashboardOperatore() {
   const { token, user } = useAuth(); // user contiene info su cliente_id e sala
   const [segnalazioni, setSegnalazioni] = useState<Segnalazione[]>([]);
+  const [totaleSegnalazioni, setTotaleSegnalazioni] = useState(0);
   const [categorie, setCategorie] = useState<Categoria[]>([]);
   const [filtroData, setFiltroData] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("");
+  const [paginaCorrente, setPaginaCorrente] = useState(1);
+  const pageSize = 100;
   const [form, setForm] = useState({ data: "", ora: "", descrizione: "", categoria_id: "" });
   const toast = useToast();
 
-  // Carica categorie e segnalazioni operatore
-  const loadData = async () => {
-    try {
-      const [segRes, catRes] = await Promise.all([
-        fetch(`${import.meta.env.VITE_API_BASE_URL}/segnalazioni-operatore`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${import.meta.env.VITE_API_BASE_URL}/categorie`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-      ]);
+  const totalePagine = Math.max(1, Math.ceil(totaleSegnalazioni / pageSize));
 
-      setSegnalazioni(await segRes.json());
+  // Prepara i parametri per conteggio e tabella, mantenendo coerenti lista e filtri
+  const buildSegnalazioniQueryString = (includePagination = false) => {
+    const params = new URLSearchParams();
+
+    if (filtroData) {
+      params.append("dataInizio", filtroData);
+      params.append("dataFine", filtroData);
+    }
+
+    if (filtroCategoria) params.append("categoria", filtroCategoria);
+
+    if (includePagination) {
+      params.append("limit", String(pageSize));
+      params.append("offset", String((paginaCorrente - 1) * pageSize));
+    }
+
+    return params.toString();
+  };
+
+  const loadCategorie = async () => {
+    try {
+      const catRes = await fetch(`${import.meta.env.VITE_API_BASE_URL}/categorie`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
       setCategorie(await catRes.json());
     } catch {
-      toast({ title: "Errore caricamento dati", status: "error" });
+      toast({ title: "Errore caricamento categorie", status: "error" });
     }
   };
 
+  // Carica il numero totale reale delle segnalazioni dell'operatore, applicando i filtri lato backend
+  const loadTotaleSegnalazioni = async () => {
+    try {
+      const queryString = buildSegnalazioniQueryString();
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/segnalazioni/count${queryString ? `?${queryString}` : ""}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      const data = await res.json();
+      setTotaleSegnalazioni(data.totale || 0);
+    } catch {
+      toast({ title: "Errore conteggio segnalazioni", status: "error" });
+    }
+  };
+
+  // Carica le segnalazioni della pagina corrente, applicando gli stessi filtri lato backend
+  const loadSegnalazioni = async () => {
+    try {
+      const queryString = buildSegnalazioniQueryString(true);
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/segnalazioni${queryString ? `?${queryString}` : ""}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      setSegnalazioni(await res.json());
+    } catch {
+      toast({ title: "Errore caricamento segnalazioni", status: "error" });
+    }
+  };
+
+  // Carica categorie una sola volta
   useEffect(() => {
-    loadData();
+    loadCategorie();
   }, []);
 
-  // Filtri
-  const segnalazioniFiltrate = segnalazioni.filter((s) => {
-    const dataMatch = filtroData ? s.data.startsWith(filtroData) : true;
-    const catMatch = filtroCategoria ? s.categoria === filtroCategoria : true;
-    return dataMatch && catMatch;
-  });
+  // Ricarica conteggio e tabella quando cambiano filtri o pagina
+  useEffect(() => {
+    loadTotaleSegnalazioni();
+    loadSegnalazioni();
+  }, [filtroData, filtroCategoria, paginaCorrente]);
 
   // Invia nuova segnalazione
   const inviaSegnalazione = async () => {
@@ -63,7 +115,7 @@ export default function DashboardOperatore() {
       return;
     }
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/segnalazioni-operatore`, {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/segnalazioni`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -74,7 +126,9 @@ export default function DashboardOperatore() {
       if (res.ok) {
         toast({ title: "Segnalazione inviata", status: "success" });
         setForm({ data: "", ora: "", descrizione: "", categoria_id: "" });
-        loadData();
+        setPaginaCorrente(1);
+        loadTotaleSegnalazioni();
+        loadSegnalazioni();
       } else {
         toast({ title: "Errore invio segnalazione", status: "error" });
       }
@@ -86,7 +140,7 @@ export default function DashboardOperatore() {
   // Export CSV
   const esportaCSV = () => {
     const header = ["ID", "Data", "Ora", "Categoria", "Descrizione"];
-    const rows = segnalazioniFiltrate.map((s) => [
+    const rows = segnalazioni.map((s) => [
       s.id,
       new Date(s.data).toLocaleDateString("it-IT"),
       s.ora,
@@ -116,7 +170,7 @@ export default function DashboardOperatore() {
           </tr>
         </thead>
         <tbody>
-          ${segnalazioniFiltrate
+          ${segnalazioni
             .map(
               (s) => `
             <tr>
@@ -171,11 +225,11 @@ export default function DashboardOperatore() {
 
       {/* Filtri */}
       <HStack mb={4} spacing={4}>
-        <Input type="date" value={filtroData} onChange={(e) => setFiltroData(e.target.value)} />
+        <Input type="date" value={filtroData} onChange={(e) => { setFiltroData(e.target.value); setPaginaCorrente(1); }} />
         <Select
           placeholder="Tutte le categorie"
           value={filtroCategoria}
-          onChange={(e) => setFiltroCategoria(e.target.value)}
+          onChange={(e) => { setFiltroCategoria(e.target.value); setPaginaCorrente(1); }}
         >
           {categorie.map((c) => (
             <option key={c.id} value={c.nome_categoria}>
@@ -183,7 +237,7 @@ export default function DashboardOperatore() {
             </option>
           ))}
         </Select>
-        <Button onClick={() => { setFiltroData(""); setFiltroCategoria(""); }}>Reset</Button>
+        <Button onClick={() => { setFiltroData(""); setFiltroCategoria(""); setPaginaCorrente(1); }}>Reset</Button>
       </HStack>
 
       {/* Tabella segnalazioni */}
@@ -199,7 +253,7 @@ export default function DashboardOperatore() {
             </Tr>
           </Thead>
           <Tbody>
-            {segnalazioniFiltrate.map((s) => (
+            {segnalazioni.map((s) => (
               <Tr key={s.id}>
                 <Td>{s.id}</Td>
                 <Td>{new Date(s.data).toLocaleDateString("it-IT")}</Td>
@@ -210,6 +264,30 @@ export default function DashboardOperatore() {
             ))}
           </Tbody>
         </Table>
+
+        {totalePagine > 1 && (
+          <HStack justify="center" spacing={2} mt={6}>
+            <Button
+              size="sm"
+              variant="outline"
+              isDisabled={paginaCorrente === 1}
+              onClick={() => setPaginaCorrente((p) => Math.max(1, p - 1))}
+            >
+              Precedente
+            </Button>
+            <Text fontSize="sm" color="gray.600">
+              Pagina {paginaCorrente} di {totalePagine}
+            </Text>
+            <Button
+              size="sm"
+              variant="outline"
+              isDisabled={paginaCorrente === totalePagine}
+              onClick={() => setPaginaCorrente((p) => Math.min(totalePagine, p + 1))}
+            >
+              Successiva
+            </Button>
+          </HStack>
+        )}
       </Box>
 
       {/* Export */}
