@@ -76,6 +76,7 @@ const pulseAnimation = keyframes`
 export default function DashboardAdmin() {
   const { token, logout } = useAuth();
   const [segnalazioni, setSegnalazioni] = useState<Segnalazione[]>([]);
+  const [totaleSegnalazioni, setTotaleSegnalazioni] = useState(0);
   const [categorie, setCategorie] = useState<Categoria[]>([]);
   const [clienti, setClienti] = useState<Cliente[]>([]);
   const [utenti, setUtenti] = useState<any[]>([]);
@@ -88,6 +89,8 @@ export default function DashboardAdmin() {
   const [filtroCliente, setFiltroCliente] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [paginaCorrente, setPaginaCorrente] = useState(1);
+  const pageSize = 100;
   
   const toast = useToast();
   const navigate = useNavigate();
@@ -98,14 +101,73 @@ export default function DashboardAdmin() {
   const cardBg = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
 
+  // Prepara i parametri per conteggio e tabella, mantenendo coerenti card e lista
+  const buildSegnalazioniQueryString = (includePagination = false) => {
+    const params = new URLSearchParams();
+
+    if (dataInizio) params.append("dataInizio", dataInizio);
+    if (dataFine) params.append("dataFine", dataFine);
+    if (filtroCategoria) params.append("categoria", filtroCategoria);
+    if (filtroCliente) params.append("sala", filtroCliente);
+    if (searchTerm) params.append("search", searchTerm);
+
+    if (includePagination) {
+      params.append("limit", String(pageSize));
+      params.append("offset", String((paginaCorrente - 1) * pageSize));
+    }
+
+    return params.toString();
+  };
+
+  // Carica il numero totale reale delle segnalazioni, non limitato alle prime 100 righe
+  const loadTotaleSegnalazioni = async () => {
+    try {
+      const queryString = buildSegnalazioniQueryString();
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/segnalazioni/count${queryString ? `?${queryString}` : ""}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      const data = await res.json();
+      setTotaleSegnalazioni(data.totale || 0);
+    } catch {
+      toast({
+        title: "Errore conteggio segnalazioni",
+        status: "error",
+        duration: 3000,
+      });
+    }
+  };
+
+  // Carica le segnalazioni della pagina corrente, applicando i filtri lato backend
+  const loadSegnalazioni = async () => {
+    try {
+      const queryString = buildSegnalazioniQueryString(true);
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/segnalazioni${queryString ? `?${queryString}` : ""}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      const data = await res.json();
+      setSegnalazioni(data);
+    } catch {
+      toast({
+        title: "Errore caricamento segnalazioni",
+        status: "error",
+        duration: 3000,
+      });
+    }
+  };
+
   // Carica dati
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [segRes, catRes, cliRes, uteRes] = await Promise.all([
-        fetch(`${import.meta.env.VITE_API_BASE_URL}/segnalazioni`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
+      const [catRes, cliRes, uteRes] = await Promise.all([
         fetch(`${import.meta.env.VITE_API_BASE_URL}/categorie`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
@@ -117,11 +179,11 @@ export default function DashboardAdmin() {
         }),
       ]);
 
-      const segnalazioniData = await segRes.json();
-      setSegnalazioni(segnalazioniData);
       setCategorie(await catRes.json());
       setClienti(await cliRes.json());
       setUtenti(await uteRes.json());
+      await loadTotaleSegnalazioni();
+      await loadSegnalazioni();
 
     } catch {
       toast({ 
@@ -185,62 +247,95 @@ export default function DashboardAdmin() {
     setDataFine(fine.toISOString().split('T')[0]);
   }, [filtroTemporale]);
 
-  // Filtri combinati
-  const segnalazioniFiltrate = segnalazioni.filter((s) => {
-    // Filtro temporale
-    const dataSegnalazione = new Date(s.data);
-    const dataInizioFilter = dataInizio ? new Date(dataInizio) : null;
-    const dataFineFilter = dataFine ? new Date(dataFine) : null;
-    
-    const dataMatch = 
-      (!dataInizioFilter || dataSegnalazione >= dataInizioFilter) &&
-      (!dataFineFilter || dataSegnalazione <= dataFineFilter);
-    
-    // Altri filtri
-    const catMatch = filtroCategoria ? s.categoria === filtroCategoria : true;
-    const cliMatch = filtroCliente ? s.sala === filtroCliente : true;
-    const searchMatch = searchTerm ? 
-      s.descrizione.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.categoria?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.sala?.toLowerCase().includes(searchTerm.toLowerCase()) : true;
-    
-    return dataMatch && catMatch && cliMatch && searchMatch;
-  });
+  useEffect(() => {
+    setPaginaCorrente(1);
+  }, [dataInizio, dataFine, filtroCategoria, filtroCliente, searchTerm]);
 
-  // Esporta CSV
-  const esportaCSV = () => {
-    if (segnalazioniFiltrate.length === 0) {
+  useEffect(() => {
+    if (!token) return;
+    loadTotaleSegnalazioni();
+    loadSegnalazioni();
+  }, [dataInizio, dataFine, filtroCategoria, filtroCliente, searchTerm, paginaCorrente]);
+
+  const totalePagine = Math.max(1, Math.ceil(totaleSegnalazioni / pageSize));
+  const segnalazioniFiltrate = segnalazioni;
+
+  // 📌 ESPORTA CSV - Prende TUTTE le segnalazioni (senza paginazione)
+  const esportaCSV = async () => {
+    setIsLoading(true);
+    
+    try {
+      // Costruisci i parametri dei filtri attuali (SENZA limit e offset)
+      const params = new URLSearchParams();
+      if (dataInizio) params.append("dataInizio", dataInizio);
+      if (dataFine) params.append("dataFine", dataFine);
+      if (filtroCategoria) params.append("categoria", filtroCategoria);
+      if (filtroCliente) params.append("sala", filtroCliente);
+      if (searchTerm) params.append("search", searchTerm);
+      
+      // Chiamata all'endpoint /tutte che restituisce TUTTE le segnalazioni
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/segnalazioni/tutte?${params.toString()}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Errore nel recupero dati");
+      }
+      
+      const tutteSegnalazioni = await res.json();
+      
+      if (!tutteSegnalazioni || tutteSegnalazioni.length === 0) {
+        toast({
+          title: "Nessun dato da esportare",
+          description: "Con i filtri attuali non ci sono segnalazioni",
+          status: "warning",
+          duration: 3000,
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Genera il CSV
+      const header = ["ID", "Data", "Ora", "Categoria", "Sala", "Descrizione"];
+      const rows = tutteSegnalazioni.map((s: Segnalazione) => [
+        s.id,
+        new Date(s.data).toLocaleDateString("it-IT"),
+        s.ora,
+        s.categoria || "",
+        s.sala || "",
+        s.descrizione || "",
+      ]);
+      
+      const csvContent = "data:text/csv;charset=utf-8," + [header, ...rows].map((e) => e.join(";")).join("\n");
+      const link = document.createElement("a");
+      link.setAttribute("href", encodeURI(csvContent));
+      link.setAttribute("download", `segnalazioni_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
       toast({
-        title: "Nessun dato da esportare",
-        status: "warning",
+        title: "✅ CSV esportato con successo!",
+        description: `${tutteSegnalazioni.length} segnalazioni esportate`,
+        status: "success",
+        duration: 5000,
       });
-      return;
+      
+    } catch (error) {
+      console.error("Errore export CSV:", error);
+      toast({
+        title: "Errore durante l'esportazione",
+        description: error instanceof Error ? error.message : "Riprova più tardi",
+        status: "error",
+        duration: 5000,
+      });
+    } finally {
+      setIsLoading(false);
     }
-
-    const header = ["ID", "Data", "Ora", "Categoria", "Sala", "Descrizione"];
-    const rows = segnalazioniFiltrate.map((s) => [
-      s.id,
-      new Date(s.data).toLocaleDateString("it-IT"),
-      s.ora,
-      s.categoria || "",
-      s.sala || "",
-      s.descrizione || "",
-    ]);
-    
-    const csvContent = "data:text/csv;charset=utf-8," + [header, ...rows].map((e) => e.join(";")).join("\n");
-    const link = document.createElement("a");
-    link.setAttribute("href", encodeURI(csvContent));
-    link.setAttribute("download", `segnalazioni_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    toast({
-      title: "CSV esportato",
-      description: `${segnalazioniFiltrate.length} segnalazioni esportate`,
-      status: "success",
-      duration: 3000,
-    });
   };
 
   return (
@@ -348,295 +443,4 @@ export default function DashboardAdmin() {
           {/* Card Segnalazioni */}
           <ScaleFade in={!isLoading} initialScale={0.9}>
             <Card 
-              bg={cardBg} 
-              shadow="lg" 
-              border="1px" 
-              borderColor={borderColor}
-              _hover={{ shadow: "xl", transform: "translateY(-2px)" }}
-              transition="all 0.3s"
-              minH="140px"
-            >
-              <CardBody>
-                <VStack spacing={4} align="center" justify="center" height="100%">
-                  <Icon as={FiBarChart2} boxSize={10} color="blue.500" />
-                  <Text fontSize="4xl" fontWeight="bold" color="gray.800">
-                    {segnalazioniFiltrate.length}
-                  </Text>
-                  <Text fontSize="xl" fontWeight="semibold" color="gray.600">
-                    Segnalazioni
-                  </Text>
-                  <Button
-                    colorScheme="blue"
-                    leftIcon={<FiDownload />}
-                    onClick={esportaCSV}
-                    size="md"
-                    width="full"
-                    mt={2}
-                  >
-                    Esporta CSV
-                  </Button>
-                </VStack>
-              </CardBody>
-            </Card>
-          </ScaleFade>
-
-          {/* Card Gestione Utenti */}
-          <ScaleFade in={!isLoading} initialScale={0.9} delay={0.1}>
-            <Card 
-              bg={cardBg} 
-              shadow="md" 
-              border="1px" 
-              borderColor={borderColor}
-              _hover={{ 
-                shadow: "lg", 
-                transform: "translateY(-3px)",
-                animation: `${pulseAnimation} 0.5s ease-in-out`
-              }}
-              transition="all 0.3s"
-              cursor="pointer"
-              onClick={() => navigate("/utenti")}
-              minH="140px"
-            >
-              <CardBody>
-                <VStack spacing={3} align="center" justify="center" height="100%">
-                  <Icon as={FiUsers} boxSize={10} color="blue.500" />
-                  <Text fontWeight="bold" color="gray.800" fontSize="xl" textAlign="center">
-                    Gestione Utenti
-                  </Text>
-                  <Text fontSize="sm" color="gray.600" textAlign="center" lineHeight="1.4">
-                    Gestisci gestione utenti del sistema
-                  </Text>
-                </VStack>
-              </CardBody>
-            </Card>
-          </ScaleFade>
-
-          {/* Card Categorie */}
-          <ScaleFade in={!isLoading} initialScale={0.9} delay={0.2}>
-            <Card 
-              bg={cardBg} 
-              shadow="md" 
-              border="1px" 
-              borderColor={borderColor}
-              _hover={{ 
-                shadow: "lg", 
-                transform: "translateY(-3px)",
-                animation: `${pulseAnimation} 0.5s ease-in-out`
-              }}
-              transition="all 0.3s"
-              cursor="pointer"
-              onClick={() => navigate("/categorie")}
-              minH="140px"
-            >
-              <CardBody>
-                <VStack spacing={3} align="center" justify="center" height="100%">
-                  <Icon as={FiFolder} boxSize={10} color="purple.500" />
-                  <Text fontWeight="bold" color="gray.800" fontSize="xl" textAlign="center">
-                    Categorie
-                  </Text>
-                  <Text fontSize="sm" color="gray.600" textAlign="center" lineHeight="1.4">
-                    Gestisci categorie del sistema
-                  </Text>
-                </VStack>
-              </CardBody>
-            </Card>
-          </ScaleFade>
-
-          {/* Card Clienti */}
-          <ScaleFade in={!isLoading} initialScale={0.9} delay={0.3}>
-            <Card 
-              bg={cardBg} 
-              shadow="md" 
-              border="1px" 
-              borderColor={borderColor}
-              _hover={{ 
-                shadow: "lg", 
-                transform: "translateY(-3px)",
-                animation: `${pulseAnimation} 0.5s ease-in-out`
-              }}
-              transition="all 0.3s"
-              cursor="pointer"
-              onClick={() => navigate("/clienti")}
-              minH="140px"
-            >
-              <CardBody>
-                <VStack spacing={3} align="center" justify="center" height="100%">
-                  <Icon as={FiBriefcase} boxSize={10} color="teal.500" />
-                  <Text fontWeight="bold" color="gray.800" fontSize="xl" textAlign="center">
-                    Clienti
-                  </Text>
-                  <Text fontSize="sm" color="gray.600" textAlign="center" lineHeight="1.4">
-                    Gestisci clienti del sistema
-                  </Text>
-                </VStack>
-              </CardBody>
-            </Card>
-          </ScaleFade>
-        </SimpleGrid>
-
-        {/* Filtri e Ricerca */}
-        <Card bg={cardBg} shadow="md" border="1px" borderColor={borderColor} mb={6}>
-          <CardBody>
-            <VStack spacing={4} align="stretch">
-              <Heading size="sm" color="gray.700">
-                Filtri e Ricerca
-              </Heading>
-              
-              <HStack spacing={4} flexWrap="wrap">
-                {/* Filtro Temporale */}
-                <Select
-                  placeholder="Tutti i periodi"
-                  value={filtroTemporale}
-                  onChange={(e) => setFiltroTemporale(e.target.value as FiltroTemporale)}
-                  maxW="200px"
-                >
-                  <option value="oggi">Oggi</option>
-                  <option value="ultimi-7-giorni">Ultimi 7 giorni</option>
-                  <option value="ultimi-30-giorni">Ultimi 30 giorni</option>
-                  <option value="questo-mese">Questo mese</option>
-                  <option value="mese-scorso">Mese scorso</option>
-                  <option value="personalizzato">Personalizzato</option>
-                </Select>
-
-                {/* Input date per personalizzato */}
-                {filtroTemporale === "personalizzato" && (
-                  <>
-                    <Input
-                      type="date"
-                      value={dataInizio}
-                      onChange={(e) => setDataInizio(e.target.value)}
-                      maxW="150px"
-                    />
-                    <Text color="gray.600">al</Text>
-                    <Input
-                      type="date"
-                      value={dataFine}
-                      onChange={(e) => setDataFine(e.target.value)}
-                      maxW="150px"
-                    />
-                  </>
-                )}
-
-                {/* Search */}
-                <InputGroup maxW="300px">
-                  <InputLeftElement pointerEvents="none">
-                    <Icon as={FiSearch} color="gray.400" />
-                  </InputLeftElement>
-                  <Input
-                    placeholder="Cerca nelle segnalazioni..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </InputGroup>
-
-                {/* Filtri categoria e cliente */}
-                <Select
-                  placeholder="Tutte le categorie"
-                  value={filtroCategoria}
-                  onChange={(e) => setFiltroCategoria(e.target.value)}
-                  maxW="200px"
-                >
-                  {categorie.map((c) => (
-                    <option key={c.id} value={c.nome_categoria}>
-                      {c.nome_categoria}
-                    </option>
-                  ))}
-                </Select>
-
-                <Select
-                  placeholder="Tutti i clienti"
-                  value={filtroCliente}
-                  onChange={(e) => setFiltroCliente(e.target.value)}
-                  maxW="200px"
-                >
-                  {clienti.map((c) => (
-                    <option key={c.id} value={c.nome_sala}>
-                      {c.nome_sala}
-                    </option>
-                  ))}
-                </Select>
-
-                <Button
-                  leftIcon={<FiFilter />}
-                  variant="outline"
-                  onClick={() => {
-                    setFiltroTemporale("tutti");
-                    setDataInizio("");
-                    setDataFine("");
-                    setFiltroCategoria("");
-                    setFiltroCliente("");
-                    setSearchTerm("");
-                  }}
-                >
-                  Reset Filtri
-                </Button>
-              </HStack>
-            </VStack>
-          </CardBody>
-        </Card>
-
-        {/* Tabella Segnalazioni */}
-        <Card bg={cardBg} shadow="lg" border="1px" borderColor={borderColor}>
-          <CardHeader pb={0}>
-            <Flex justify="space-between" align="center">
-              <Heading size="md" color="gray.700">
-                Segnalazioni
-              </Heading>
-            </Flex>
-          </CardHeader>
-          <CardBody>
-            <Box overflowX="auto">
-              <Table variant="simple">
-                <Thead bg="gray.50">
-                  <Tr>
-                    <Th>DATA</Th>
-                    <Th>ORA</Th>
-                    <Th>CATEGORIA</Th>
-                    <Th>SALA</Th>
-                    <Th>DESCRIZIONE</Th>
-                  </Tr>
-                </Thead>
-                <Tbody>
-                  {segnalazioniFiltrate.map((s) => (
-                    <Tr 
-                      key={s.id}
-                      _hover={{ bg: "gray.50" }}
-                      transition="background 0.2s"
-                    >
-                      <Td>{new Date(s.data).toLocaleDateString("it-IT")}</Td>
-                      <Td>{s.ora}</Td>
-                      <Td>{s.categoria || "N/A"}</Td>
-                      <Td>{s.sala || "N/A"}</Td>
-                      <Td maxW="400px">
-                        <Tooltip label={s.descrizione}>
-                          <Text noOfLines={2} fontSize="sm">
-                            {s.descrizione}
-                          </Text>
-                        </Tooltip>
-                      </Td>
-                    </Tr>
-                  ))}
-                </Tbody>
-              </Table>
-            </Box>
-
-            {segnalazioniFiltrate.length === 0 && (
-              <VStack py={10} color="gray.500">
-                <Icon as={FiFilter} boxSize={8} />
-                <Text>Nessuna segnalazione trovata con i filtri attuali</Text>
-                <Button variant="link" onClick={() => {
-                  setFiltroTemporale("tutti");
-                  setFiltroCategoria("");
-                  setFiltroCliente("");
-                  setSearchTerm("");
-                }}>
-                  Ripristina filtri
-                </Button>
-              </VStack>
-            )}
-          </CardBody>
-        </Card>
-      </Box>
-    </Box>
-  );
-}
+              bg={cardBg
