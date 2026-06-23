@@ -443,4 +443,323 @@ export default function DashboardAdmin() {
           {/* Card Segnalazioni */}
           <ScaleFade in={!isLoading} initialScale={0.9}>
             <Card 
-              bg={cardBg
+              bg={cardBg} 
+              shadow="lg" 
+              border="1px" 
+              borderColor={borderColor}
+              _hover={{ shadow: "xl", transform: "translateY(-2px)" }}
+              transition="all 0.3s"
+              minH="140px"
+            >
+              <CardBody>
+                <VStack spacing={4} align="center" justify="center" height="100%">
+                  <Icon as={FiBarChart2} boxSize={10} color="blue.500" />
+                  <Text fontSize="4xl" fontWeight="bold" color="gray.800">
+                    {totaleSegnalazioni}
+                  </Text>
+                  <Text fontSize="xl" fontWeight="semibold" color="gray.600">
+                    Segnalazioni
+                  </Text>
+                  <Button
+                    colorScheme="blue"
+                    leftIcon={<FiDownload />}
+                    onClick={esportaCSV}
+                    size="md"
+                    width="full"
+                    mt={2}
+                  >
+                    Esporta CSV
+                  </Button>
+                </VStack>
+              </CardBody>
+            </Card>
+          </ScaleFade>
+
+          {/* Card Gestione Utenti */}
+          <ScaleFade in={!isLoading} initialScale={0.9} delay={0.1}>
+            <Card 
+              bg={cardBg} 
+              shadow="md" 
+              border="1px" 
+              borderColor={borderColor}
+              _hover={{ 
+                shadow: "lg", 
+                transform: "translateY(-3px)",
+                animation: `${pulseAnimation} 0.5s ease-in-out`
+              }}
+              transition="all 0.3s"
+              cursor="pointer"
+              onClick={() => navigate("/utenti")}
+              minH="140px"
+            >
+              <CardBody>
+                <VStack spacing={3} align="center" justify="center" height="100%">
+                  <Icon as={FiUsers} boxSize={10} color="blue.500" />
+                  <Text fontWeight="bold" color="gray.800" fontSize="xl" textAlign="center">
+                    Gestione Utenti
+                  </Text>
+                  <Text fontSize="sm" color="gray.600" textAlign="center" lineHeight="1.4">
+                    Gestisci gestione utenti del sistema
+                  </Text>
+                </VStack>
+              </CardBody>
+            </Card>
+          </ScaleFade>
+
+          {/* Card Categorie */}
+          <ScaleFade in={!isLoading} initialScale={0.9} delay={0.2}>
+            <Card 
+              bg={cardBg} 
+              shadow="md" 
+              border="1px" 
+              borderColor={borderColor}
+              _hover={{ 
+                shadow: "lg", 
+                transform: "translateY(-3px)",
+                animation: `${pulseAnimation} 0.5s ease-in-out`
+              }}
+              transition="all 0.3s"
+              cursor="pointer"
+              onClick={() => navigate("/categorie")}
+              minH="140px"
+            >
+              <CardBody>
+                <VStack spacing={3} align="center" justify="center" height="100%">
+                  <Icon as={FiFolder} boxSize={10} color="purple.500" />
+                  <Text fontWeight="bold" color="gray.800" fontSize="xl" textAlign="center">
+                    Categorie
+                  </Text>
+                  <Text fontSize="sm" color="gray.600" textAlign="center" lineHeight="1.4">
+                    Gestisci categorie del sistema
+                  </Text>
+                </VStack>
+              </CardBody>
+            </Card>
+          </ScaleFade>
+
+          {/* Card Clienti */}
+          <ScaleFade in={!isLoading} initialScale={0.9} delay={0.3}>
+            <Card 
+              bg={cardBg} 
+              shadow="md" 
+              border="1px" 
+              borderColor={borderColor}
+              _hover={{ 
+                shadow: "lg", 
+                transform: "translateY(-3px)",
+                animation: `${pulseAnimation} 0.5s ease-in-out`
+              }}
+              transition="all 0.3s"
+              cursor="pointer"
+              onClick={() => navigate("/clienti")}
+              minH="140px"
+            >
+              <CardBody>
+                <VStack spacing={3} align="center" justify="center" height="100%">
+                  <Icon as={FiBriefcase} boxSize={10} color="teal.500" />
+                  <Text fontWeight="bold" color="gray.800" fontSize="xl" textAlign="center">
+                    Clienti
+                  </Text>
+                  <Text fontSize="sm" color="gray.600" textAlign="center" lineHeight="1.4">
+                    Gestisci clienti del sistema
+                  </Text>
+                </VStack>
+              </CardBody>
+            </Card>
+          </ScaleFade>
+        </SimpleGrid>
+
+        {/* Filtri e Ricerca */}
+        <Card bg={cardBg} shadow="md" border="1px" borderColor={borderColor} mb={6}>
+          <CardBody>
+            <VStack spacing={4} align="stretch">
+              <Heading size="sm" color="gray.700">
+                Filtri e Ricerca
+              </Heading>
+              
+              <HStack spacing={4} flexWrap="wrap">
+                {/* Filtro Temporale */}
+                <Select
+                  placeholder="Tutti i periodi"
+                  value={filtroTemporale}
+                  onChange={(e) => setFiltroTemporale(e.target.value as FiltroTemporale)}
+                  maxW="200px"
+                >
+                  <option value="oggi">Oggi</option>
+                  <option value="ultimi-7-giorni">Ultimi 7 giorni</option>
+                  <option value="ultimi-30-giorni">Ultimi 30 giorni</option>
+                  <option value="questo-mese">Questo mese</option>
+                  <option value="mese-scorso">Mese scorso</option>
+                  <option value="personalizzato">Personalizzato</option>
+                </Select>
+
+                {/* Input date per personalizzato */}
+                {filtroTemporale === "personalizzato" && (
+                  <>
+                    <Input
+                      type="date"
+                      value={dataInizio}
+                      onChange={(e) => setDataInizio(e.target.value)}
+                      maxW="150px"
+                    />
+                    <Text color="gray.600">al</Text>
+                    <Input
+                      type="date"
+                      value={dataFine}
+                      onChange={(e) => setDataFine(e.target.value)}
+                      maxW="150px"
+                    />
+                  </>
+                )}
+
+                {/* Search */}
+                <InputGroup maxW="300px">
+                  <InputLeftElement pointerEvents="none">
+                    <Icon as={FiSearch} color="gray.400" />
+                  </InputLeftElement>
+                  <Input
+                    placeholder="Cerca nelle segnalazioni..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </InputGroup>
+
+                {/* Filtri categoria e cliente */}
+                <Select
+                  placeholder="Tutte le categorie"
+                  value={filtroCategoria}
+                  onChange={(e) => setFiltroCategoria(e.target.value)}
+                  maxW="200px"
+                >
+                  {categorie.map((c) => (
+                    <option key={c.id} value={c.nome_categoria}>
+                      {c.nome_categoria}
+                    </option>
+                  ))}
+                </Select>
+
+                <Select
+                  placeholder="Tutti i clienti"
+                  value={filtroCliente}
+                  onChange={(e) => setFiltroCliente(e.target.value)}
+                  maxW="200px"
+                >
+                  {clienti.map((c) => (
+                    <option key={c.id} value={c.nome_sala}>
+                      {c.nome_sala}
+                    </option>
+                  ))}
+                </Select>
+
+                <Button
+                  leftIcon={<FiFilter />}
+                  variant="outline"
+                  onClick={() => {
+                    setFiltroTemporale("tutti");
+                    setDataInizio("");
+                    setDataFine("");
+                    setFiltroCategoria("");
+                    setFiltroCliente("");
+                    setSearchTerm("");
+                    setPaginaCorrente(1);
+                  }}
+                >
+                  Reset Filtri
+                </Button>
+              </HStack>
+            </VStack>
+          </CardBody>
+        </Card>
+
+        {/* Tabella Segnalazioni */}
+        <Card bg={cardBg} shadow="lg" border="1px" borderColor={borderColor}>
+          <CardHeader pb={0}>
+            <Flex justify="space-between" align="center">
+              <Heading size="md" color="gray.700">
+                Segnalazioni
+              </Heading>
+            </Flex>
+          </CardHeader>
+          <CardBody>
+            <Box overflowX="auto">
+              <Table variant="simple">
+                <Thead bg="gray.50">
+                  <Tr>
+                    <Th>DATA</Th>
+                    <Th>ORA</Th>
+                    <Th>CATEGORIA</Th>
+                    <Th>SALA</Th>
+                    <Th>DESCRIZIONE</Th>
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  {segnalazioniFiltrate.map((s) => (
+                    <Tr 
+                      key={s.id}
+                      _hover={{ bg: "gray.50" }}
+                      transition="background 0.2s"
+                    >
+                      <Td>{new Date(s.data).toLocaleDateString("it-IT")}</Td>
+                      <Td>{s.ora}</Td>
+                      <Td>{s.categoria || "N/A"}</Td>
+                      <Td>{s.sala || "N/A"}</Td>
+                      <Td maxW="400px">
+                        <Tooltip label={s.descrizione}>
+                          <Text noOfLines={2} fontSize="sm">
+                            {s.descrizione}
+                          </Text>
+                        </Tooltip>
+                      </Td>
+                    </Tr>
+                  ))}
+                </Tbody>
+              </Table>
+            </Box>
+
+            {segnalazioniFiltrate.length === 0 && (
+              <VStack py={10} color="gray.500">
+                <Icon as={FiFilter} boxSize={8} />
+                <Text>Nessuna segnalazione trovata con i filtri attuali</Text>
+                <Button variant="link" onClick={() => {
+                  setFiltroTemporale("tutti");
+                  setFiltroCategoria("");
+                  setFiltroCliente("");
+                  setSearchTerm("");
+                  setDataInizio("");
+                  setDataFine("");
+                  setPaginaCorrente(1);
+                }}>
+                  Ripristina filtri
+                </Button>
+              </VStack>
+            )}
+
+            {totalePagine > 1 && (
+              <HStack justify="center" spacing={2} mt={6}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  isDisabled={paginaCorrente === 1}
+                  onClick={() => setPaginaCorrente((p) => Math.max(1, p - 1))}
+                >
+                  Precedente
+                </Button>
+                <Text fontSize="sm" color="gray.600">
+                  Pagina {paginaCorrente} di {totalePagine}
+                </Text>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  isDisabled={paginaCorrente === totalePagine}
+                  onClick={() => setPaginaCorrente((p) => Math.min(totalePagine, p + 1))}
+                >
+                  Successiva
+                </Button>
+              </HStack>
+            )}
+          </CardBody>
+        </Card>
+      </Box>
+    </Box>
+  );
+}
