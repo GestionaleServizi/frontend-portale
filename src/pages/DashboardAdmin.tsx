@@ -260,40 +260,82 @@ export default function DashboardAdmin() {
   const totalePagine = Math.max(1, Math.ceil(totaleSegnalazioni / pageSize));
   const segnalazioniFiltrate = segnalazioni;
 
-  // Esporta CSV
-  const esportaCSV = () => {
-    if (segnalazioniFiltrate.length === 0) {
-      toast({
-        title: "Nessun dato da esportare",
-        status: "warning",
-      });
-      return;
-    }
-
-    const header = ["ID", "Data", "Ora", "Categoria", "Sala", "Descrizione"];
-    const rows = segnalazioniFiltrate.map((s) => [
-      s.id,
-      new Date(s.data).toLocaleDateString("it-IT"),
-      s.ora,
-      s.categoria || "",
-      s.sala || "",
-      s.descrizione || "",
-    ]);
+  // 📌 ESPORTA CSV - Prende TUTTE le segnalazioni (senza paginazione)
+  const esportaCSV = async () => {
+    setIsLoading(true);
     
-    const csvContent = "data:text/csv;charset=utf-8," + [header, ...rows].map((e) => e.join(";")).join("\n");
-    const link = document.createElement("a");
-    link.setAttribute("href", encodeURI(csvContent));
-    link.setAttribute("download", `segnalazioni_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      // Costruisci i parametri dei filtri attuali (SENZA limit e offset)
+      const params = new URLSearchParams();
+      if (dataInizio) params.append("dataInizio", dataInizio);
+      if (dataFine) params.append("dataFine", dataFine);
+      if (filtroCategoria) params.append("categoria", filtroCategoria);
+      if (filtroCliente) params.append("sala", filtroCliente);
+      if (searchTerm) params.append("search", searchTerm);
+      
+      // Chiamata all'endpoint /tutte che restituisce TUTTE le segnalazioni
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/segnalazioni/tutte?${params.toString()}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Errore nel recupero dati");
+      }
+      
+      const tutteSegnalazioni = await res.json();
+      
+      if (!tutteSegnalazioni || tutteSegnalazioni.length === 0) {
+        toast({
+          title: "Nessun dato da esportare",
+          description: "Con i filtri attuali non ci sono segnalazioni",
+          status: "warning",
+          duration: 3000,
+        });
+        setIsLoading(false);
+        return;
+      }
 
-    toast({
-      title: "CSV esportato",
-      description: `${segnalazioniFiltrate.length} segnalazioni esportate`,
-      status: "success",
-      duration: 3000,
-    });
+      // Genera il CSV
+      const header = ["ID", "Data", "Ora", "Categoria", "Sala", "Descrizione"];
+      const rows = tutteSegnalazioni.map((s: Segnalazione) => [
+        s.id,
+        new Date(s.data).toLocaleDateString("it-IT"),
+        s.ora,
+        s.categoria || "",
+        s.sala || "",
+        s.descrizione || "",
+      ]);
+      
+      const csvContent = "data:text/csv;charset=utf-8," + [header, ...rows].map((e) => e.join(";")).join("\n");
+      const link = document.createElement("a");
+      link.setAttribute("href", encodeURI(csvContent));
+      link.setAttribute("download", `segnalazioni_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({
+        title: "✅ CSV esportato con successo!",
+        description: `${tutteSegnalazioni.length} segnalazioni esportate`,
+        status: "success",
+        duration: 5000,
+      });
+      
+    } catch (error) {
+      console.error("Errore export CSV:", error);
+      toast({
+        title: "Errore durante l'esportazione",
+        description: error instanceof Error ? error.message : "Riprova più tardi",
+        status: "error",
+        duration: 5000,
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
