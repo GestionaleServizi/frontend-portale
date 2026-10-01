@@ -142,7 +142,6 @@ export default function UtentiPage() {
         dataToSend.password = password;
       }
 
-      console.log("Dati inviati:", dataToSend); // Per debug
 
       const res = await fetch(url, {
         method,
